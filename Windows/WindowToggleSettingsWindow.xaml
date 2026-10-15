@@ -1,0 +1,403 @@
+<Window x:Class="MDHelper.Windows.WindowToggleSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Display Control Settings"
+        Height="680"
+        Width="580"
+        WindowStartupLocation="CenterOwner"
+        Background="#0f0f1a">
+
+    <Window.Resources>
+        <!-- Modern Button Style -->
+        <Style x:Key="ModernButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#ff2d55"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#ff2d55"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#e02447"/>
+                    <Setter Property="BorderBrush" Value="#e02447"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Modern TextBox Style -->
+        <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#0f0f1a"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                          Foreground="{TemplateBinding Foreground}"
+                                          VerticalAlignment="Center"
+                                          VerticalScrollBarVisibility="Disabled"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#ff2d55"/>
+                </Trigger>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#ff2d55"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ComboBox Item Container Style -->
+        <Style x:Key="ModernComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#1a1a2e"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#ff2d55"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#ff2d55"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Editable TextBox Template for ComboBox -->
+        <ControlTemplate x:Key="EditableTextBoxTemplate" TargetType="TextBox">
+            <Border x:Name="bd" Background="Transparent" BorderThickness="0">
+                <ScrollViewer x:Name="PART_ContentHost" Foreground="White" VerticalAlignment="Center"/>
+            </Border>
+        </ControlTemplate>
+
+        <!-- Modern ComboBox Style -->
+        <Style x:Key="ModernComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Background" Value="#1a1a2e"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ModernComboBoxItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton" 
+                                          Grid.Column="0" 
+                                          Focusable="false"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Border" 
+                                                CornerRadius="6" 
+                                                Background="#0f0f1a" 
+                                                BorderBrush="#333333" 
+                                                BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="28"/>
+                                                </Grid.ColumnDefinitions>
+                                                <!-- Arrow glyph -->
+                                                <Path x:Name="Arrow"
+                                                      Grid.Column="1"
+                                                      Fill="#ff2d55"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="true">
+                                                <Setter TargetName="Border" Property="BorderBrush" Value="#ff2d55"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="true">
+                                                <Setter TargetName="Border" Property="BorderBrush" Value="#ff2d55"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            
+                            <!-- The content area where the text is typed -->
+                            <Border x:Name="ContentBorder" 
+                                    Margin="1,1,28,1" 
+                                    Background="#0f0f1a" 
+                                    CornerRadius="5,0,0,5" 
+                                    IsHitTestVisible="True"
+                                    HorizontalAlignment="Stretch">
+                                <TextBox x:Name="PART_EditableTextBox"
+                                         Style="{x:Null}"
+                                         Template="{StaticResource EditableTextBoxTemplate}"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Center"
+                                         Focusable="True"
+                                         Background="Transparent"
+                                         Foreground="White"
+                                         BorderThickness="0"
+                                         Padding="8,2,2,2"/>
+                            </Border>
+
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Grid x:Name="DropDown"
+                                      SnapsToDevicePixels="True"
+                                      MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border x:Name="DropDownBorder"
+                                            Background="#1a1a2e"
+                                            BorderBrush="#333333"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Margin="0,2,0,0">
+                                        <ScrollViewer SnapsToDevicePixels="True">
+                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="false">
+                                <Setter TargetName="DropDownBorder" Property="Height" Value="95"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter Property="BorderBrush" Value="#ff2d55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Display Control Settings"
+                   FontSize="24"
+                   FontWeight="Bold"
+                   Foreground="White"/>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+            <StackPanel Orientation="Vertical">
+            <!-- Border 1: Window Control Settings -->
+            <Border Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="15"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="15"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="15"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+    
+                    <!-- Checkbox -->
+                    <CheckBox x:Name="EnabledCheckBox" 
+                              Grid.Row="0" 
+                              Content="Enable External Window Control" 
+                              Foreground="White" 
+                              FontSize="14" 
+                              FontWeight="Bold" 
+                              VerticalAlignment="Center"/>
+    
+                    <!-- Title Search -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock Text="Window Title:" Foreground="#ccc" FontSize="13" Width="100" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="TitleComboBox" Width="200" Height="32" IsEditable="True" Style="{StaticResource ModernComboBoxStyle}" VerticalContentAlignment="Center" Margin="10,0,0,0" DropDownOpened="TitleComboBox_DropDownOpened"/>
+                        <TextBlock Text=" (e.g. MD.B-ZONE.RO)" Foreground="#666" FontSize="11" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+    
+                    <!-- Hotkey -->
+                    <StackPanel Grid.Row="4" Orientation="Horizontal">
+                        <TextBlock Text="Hotkey:" Foreground="#ccc" FontSize="13" Width="100" VerticalAlignment="Center"/>
+                        <Button x:Name="RecordKeyBtn" Content="🔴 Set Key" Width="100" Height="32" Margin="10,0,10,0" Style="{StaticResource ModernButtonStyle}" Click="RecordKeyBtn_Click"/>
+                        <TextBlock x:Name="KeyDisplayTextBlock" Text="None" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </StackPanel>
+    
+                    <!-- Size & Position Layout -->
+                    <StackPanel Grid.Row="6" Orientation="Vertical">
+                        <TextBlock Text="Forced Size &amp; Position" Foreground="White" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+                        
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="X:" Foreground="#ccc" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBox x:Name="XTextBox" Width="80" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+                            
+                            <TextBlock Text="  Y:" Foreground="#ccc" VerticalAlignment="Center" Margin="15,0,5,0"/>
+                            <TextBox x:Name="YTextBox" Width="80" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+                            
+                            <TextBlock Text="  Width:" Foreground="#ccc" VerticalAlignment="Center" Margin="15,0,5,0"/>
+                            <TextBox x:Name="WidthTextBox" Width="80" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+                            
+                            <TextBlock Text="  Height:" Foreground="#ccc" VerticalAlignment="Center" Margin="15,0,5,0"/>
+                            <TextBox x:Name="HeightTextBox" Width="80" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+                        </StackPanel>
+    
+                        <Button x:Name="CaptureBtn" 
+                                Content="🎯 Capture Current Window Position &amp; Size" 
+                                Height="32" 
+                                HorizontalAlignment="Left" 
+                                Style="{StaticResource ModernButtonStyle}"
+                                Padding="12,4" 
+                                Click="CaptureBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Border 2: Overlay Toggle Settings -->
+            <Border Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,15,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="15"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <CheckBox x:Name="OverlayEnabledCheckBox" Grid.Column="0" Content="Enable Overlay Toggle Hotkey" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="Hotkey:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
+                    <Button x:Name="RecordOverlayKeyBtn" Grid.Column="4" Content="🔴 Set Key" Height="32" Style="{StaticResource ModernButtonStyle}" Click="RecordOverlayKeyBtn_Click"/>
+                    <TextBlock x:Name="OverlayKeyDisplayTextBlock" Grid.Column="6" Text="None" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Border 3: Tablet Overlay Settings -->
+            <Border Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,15,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="15"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <CheckBox x:Name="TabletEnabledCheckBox" Grid.Column="0" Content="Enable Tablet Overlay" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="Hotkey:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
+                        <Button x:Name="RecordTabletKeyBtn" Grid.Column="4" Content="🔴 Set Key" Height="32" Style="{StaticResource ModernButtonStyle}" Click="RecordTabletKeyBtn_Click"/>
+                        <TextBlock x:Name="TabletKeyDisplayTextBlock" Grid.Column="6" Text="None" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock Text="Default URL:" Foreground="#ccc" FontSize="13" Width="100" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TabletUrlTextBox" Width="300" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Border 4: System Settings -->
+            <Border Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,15,0,0">
+                <Grid>
+                    <CheckBox x:Name="StartWithWindowsCheckBox" Content="Start with Windows (Lansare automată la pornire PC)" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Border 5: Copilot (Auto-Hold Key) Settings -->
+            <Border Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,15,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="15"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox x:Name="CopilotEnabledCheckBox" Grid.Column="0" Content="Enable Copilot (Pilot Automat / Auto-Hold)" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="25"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- Copilot Key (W) -->
+                        <TextBlock Grid.Column="0" Text="Tasta de menținut:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
+                        <Button x:Name="RecordCopilotKeyBtn" Grid.Column="2" Content="🔴 Set Key" Height="32" Style="{StaticResource ModernButtonStyle}" Click="RecordCopilotKeyBtn_Click"/>
+                        <TextBlock x:Name="CopilotKeyDisplayTextBlock" Grid.Column="4" Text="W" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
+
+                        <!-- Trigger Key (Ctrl) -->
+                        <TextBlock Grid.Column="6" Text="Tasta activatoare:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
+                        <Button x:Name="RecordCopilotTriggerBtn" Grid.Column="8" Content="🔴 Set Key" Height="32" Style="{StaticResource ModernButtonStyle}" Click="RecordCopilotTriggerBtn_Click"/>
+                        <TextBlock x:Name="CopilotTriggerDisplayTextBlock" Grid.Column="10" Text="Ctrl" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+
+        <!-- Cancel/Save Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button x:Name="CancelBtn" Content="Cancel" Width="100" Height="32" Margin="0,0,10,0" Style="{StaticResource ModernButtonStyle}" Click="CancelBtn_Click"/>
+            <Button x:Name="SaveBtn" Content="Save" Width="100" Height="32" Style="{StaticResource ModernButtonStyle}" Click="SaveBtn_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

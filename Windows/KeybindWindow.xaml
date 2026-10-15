@@ -1,0 +1,289 @@
+<Window x:Class="MDHelper.Windows.KeybindWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Keybinds"
+        Height="600"
+        Width="800"
+        WindowStartupLocation="CenterOwner"
+        Background="#0f0f1a">
+
+    <Window.Resources>
+        <!-- Modern Primary Button Style -->
+        <Style x:Key="ModernButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#ff2d55"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#ff2d55"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#e02447"/>
+                    <Setter Property="BorderBrush" Value="#e02447"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Modern Secondary Button Style -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#222235"/>
+            <Setter Property="Foreground" Value="#ccc"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2d2d44"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Modern TextBox Style -->
+        <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#0f0f1a"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                          Foreground="{TemplateBinding Foreground}"
+                                          VerticalAlignment="Center"
+                                          VerticalScrollBarVisibility="Disabled"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#ff2d55"/>
+                </Trigger>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#ff2d55"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Modern DataGrid Style -->
+        <Style x:Key="ModernDataGridStyle" TargetType="DataGrid">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowBackground" Value="Transparent"/>
+            <Setter Property="AlternatingRowBackground" Value="Transparent"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="Keybinds"
+                   FontSize="28"
+                   FontWeight="900"
+                   Foreground="White"
+                   Margin="0,0,0,14"/>
+
+        <!-- Global Settings -->
+        <Border Grid.Row="1" Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,0,14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Row 0: Basic Global Toggle, Cooldown Delay, Sounds, and Stop Hotkey -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="60"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <CheckBox x:Name="GlobalEnabledCheckBox" Grid.Column="0" Content="Global Enabled" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
+                    
+                    <TextBlock Grid.Column="1" Text="Cooldown (ms):" Foreground="#ccc" FontWeight="800" VerticalAlignment="Center"/>
+                    <TextBox x:Name="DelayTextBox" Grid.Column="3" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+
+                    <CheckBox x:Name="SoundsEnabledCheckBox" Grid.Column="5" Content="Enable Sounds" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
+                    
+                    <CheckBox x:Name="StopEnabledCheckBox" Grid.Column="7" Content="Stop Hotkey:" Foreground="#ccc" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <Button x:Name="RecordStopKeyBtn" Grid.Column="9" Content="🔴 Set Key" Height="32" Style="{StaticResource ModernButtonStyle}" Click="RecordStopKeyBtn_Click"/>
+                    <TextBlock x:Name="StopKeyDisplayTextBlock" Grid.Column="11" Text="None" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Row 2: Intermediate Sequence Delays -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="65"/>
+                        <ColumnDefinition Width="20"/>
+                        
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="65"/>
+                        <ColumnDefinition Width="20"/>
+                        
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="65"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="Delay after 'T' (ms):" Foreground="#ccc" VerticalAlignment="Center"/>
+                    <TextBox x:Name="DelayAfterChatOpenTextBox" Grid.Column="2" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+
+                    <TextBlock Grid.Column="4" Text="Delay after Text (ms):" Foreground="#ccc" VerticalAlignment="Center"/>
+                    <TextBox x:Name="DelayAfterTextTextBox" Grid.Column="6" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+
+                    <TextBlock Grid.Column="8" Text="Delay after Enter (ms):" Foreground="#ccc" VerticalAlignment="Center"/>
+                    <TextBox x:Name="DelayAfterEnterTextBox" Grid.Column="10" Height="32" Style="{StaticResource ModernTextBoxStyle}"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Keybind List -->
+        <Border Grid.Row="2" Background="#1a1a2e" BorderBrush="#333333" BorderThickness="1" CornerRadius="12" Padding="16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="15"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Keybinds (click key field then press any key to set)" Foreground="#ccc" FontWeight="800" Margin="0,0,0,12"/>
+
+                <DataGrid x:Name="KeybindDataGrid"
+                          Style="{StaticResource ModernDataGridStyle}"
+                          Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          HeadersVisibility="Column">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="#0f0f1a"/>
+                            <Setter Property="Margin" Value="0,0,0,6"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Style.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="10"/>
+                                </Style>
+                            </Style.Resources>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#ff2d55"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.CellStyle>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Padding" Value="12,10"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.CellStyle>
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="#666"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="12,0,0,6"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+                        <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled}" Width="80"/>
+                        <DataGridTextColumn Header="Key" Binding="{Binding KeyDisplay}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Script Preview" Binding="{Binding ScriptPreview}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel Grid.Row="3" Orientation="Horizontal">
+                    <Button x:Name="AddBtn" Content="➕ Add" Width="100" Height="32" Margin="0,0,10,0" Style="{StaticResource ModernButtonStyle}" Click="AddBtn_Click"/>
+                    <Button x:Name="EditBtn" Content="✏️ Edit" Width="100" Height="32" Margin="0,0,10,0" Style="{StaticResource ModernButtonStyle}" Click="EditBtn_Click"/>
+                    <Button x:Name="DeleteBtn" Content="🗑️ Delete" Width="100" Height="32" Margin="0,0,10,0" Style="{StaticResource ModernButtonStyle}" Click="DeleteBtn_Click"/>
+                    <Button x:Name="RecordKeyBtn" Content="🔴 Set Key" Width="120" Height="32" Style="{StaticResource ModernButtonStyle}" Click="RecordKeyBtn_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button x:Name="CancelBtn" Content="Cancel" Width="110" Height="34" Margin="0,0,10,0" Style="{StaticResource SecondaryButtonStyle}" Click="CancelBtn_Click"/>
+            <Button x:Name="SaveBtn" Content="Save" Width="110" Height="34" Style="{StaticResource ModernButtonStyle}" Click="SaveBtn_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
