@@ -116,8 +116,20 @@ public class UpdateService
 
     public async Task<string> DownloadUpdateAsync(string downloadUrl, IProgress<(long downloaded, long total)>? progress, CancellationToken ct = default)
     {
-        string tempDir = Path.GetTempPath();
-        string tempFile = Path.Combine(tempDir, $"MDTabHelper_update_{Guid.NewGuid():N}.exe");
+        string currentExe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "MDTab-Helper.exe");
+        string appDir = Path.GetDirectoryName(currentExe) ?? Path.GetTempPath();
+
+        string tempFile;
+        try
+        {
+            tempFile = Path.Combine(appDir, $"MDTab-Helper.update_{Guid.NewGuid():N}.tmp");
+            using (var fs = new FileStream(tempFile, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+            File.Delete(tempFile);
+        }
+        catch
+        {
+            tempFile = Path.Combine(Path.GetTempPath(), $"MDTab-Helper.update_{Guid.NewGuid():N}.tmp");
+        }
 
         using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
@@ -144,11 +156,46 @@ public class UpdateService
     public static void ApplyUpdateAndRestart(string tempDownloadedExe)
     {
         string currentExe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "MDTab-Helper.exe");
-        int currentPid = Environment.ProcessId;
+        string backupExe = currentExe + ".old";
 
+        try
+        {
+            // 1. Delete previous .old backup if lingering
+            if (File.Exists(backupExe))
+            {
+                try { File.Delete(backupExe); } catch { }
+            }
+
+            // 2. Windows NTFS allows renaming the currently running executable directly!
+            File.Move(currentExe, backupExe, overwrite: true);
+
+            // 3. Move the downloaded update directly into the current executable path
+            File.Move(tempDownloadedExe, currentExe, overwrite: true);
+
+            // 4. Launch the updated executable directly without any intermediate batch scripts
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = currentExe,
+                UseShellExecute = true,
+                WorkingDirectory = Path.GetDirectoryName(currentExe) ?? ""
+            };
+            Process.Start(startInfo);
+
+            // 5. Cleanly shut down this older instance
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                System.Windows.Application.Current.Shutdown();
+            });
+            return;
+        }
+        catch
+        {
+            // If direct atomic rename failed (e.g. cross-volume or special permissions), fallback to script
+        }
+
+        int currentPid = Environment.ProcessId;
         string batPath = Path.Combine(Path.GetTempPath(), $"mdtab_updater_{Guid.NewGuid():N}.bat");
 
-        // Robust Windows updater script that waits for current process PID to exit before swapping
         string batContent = $@"@echo off
 setlocal
 set RETRIES=0
@@ -181,11 +228,33 @@ exit
 
         Process.Start(psi);
 
-        // Terminate current application cleanly
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
             System.Windows.Application.Current.Shutdown();
         });
+    }
+
+    public static void CleanupOldUpdateFiles()
+    {
+        try
+        {
+            string currentExe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "MDTab-Helper.exe");
+            string backupExe = currentExe + ".old";
+            if (File.Exists(backupExe))
+            {
+                try { File.Delete(backupExe); } catch { }
+            }
+
+            string appDir = Path.GetDirectoryName(currentExe) ?? "";
+            if (!string.IsNullOrEmpty(appDir) && Directory.Exists(appDir))
+            {
+                foreach (var f in Directory.GetFiles(appDir, "MDTab-Helper.update_*.tmp"))
+                {
+                    try { File.Delete(f); } catch { }
+                }
+            }
+        }
+        catch { }
     }
 
     private static bool IsVersionNewer(string remoteVersion, string localVersion)

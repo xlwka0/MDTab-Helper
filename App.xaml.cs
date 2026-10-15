@@ -28,6 +28,8 @@ public partial class App : Application
 
         base.OnStartup(e);
 
+        MDHelper.Services.UpdateService.CleanupOldUpdateFiles();
+
         ShutdownMode = ShutdownMode.OnMainWindowClose;
 
         // Instantiate MainWindow silently in background (does not call Show)
