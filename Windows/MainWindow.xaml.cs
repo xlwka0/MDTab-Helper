@@ -605,7 +605,7 @@ public partial class MainWindow : Window
 
             var contextMenu = new ContextMenu();
             
-            var openItem = new MenuItem { Header = "🖥️  Open MD Helper" };
+            var openItem = new MenuItem { Header = "🖥️  Open MDTab-Helper" };
             openItem.Click += (s, e) => ShowMainWindow();
 
             var tabletItem = new MenuItem { Header = "📱  Toggle Tablet" };

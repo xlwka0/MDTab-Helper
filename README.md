@@ -40,7 +40,7 @@ dotnet run
 1. **Setează jocul în Borderless Windowed:**
    - GTA V: Settings → Graphics → Screen Type → **Borderless Window**
 
-2. **Adaugă imagini în MD Helper:**
+2. **Adaugă imagini în MDTab-Helper:**
    - Click "+ Add Image" și selectează imaginile dorite
 
 3. **Activează overlay-urile:**
@@ -110,7 +110,7 @@ dotnet run
 
 - **Borderless Windowed**: ✅ Funcționează perfect
 - **Exclusive Fullscreen**: ❌ Nu este suportat (limitare tehnică Windows/DirectX)
-- Configurația se salvează automat în `%AppData%/MDHelper/config.json`
+- Configurația se salvează automat în `%AppData%/MDTab-Helper/config.json`
 
 ## 🛠️ Tehnologii
 

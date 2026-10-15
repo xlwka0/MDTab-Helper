@@ -41,7 +41,7 @@ public partial class App : Application
     {
         LogException(e.Exception, "UI Thread");
         e.Handled = true; // CRITICAL: Prevents WPF from crashing/exiting!
-        MessageBox.Show($"O eroare neprevăzută a apărut pe thread-ul principal. Aplicația va încerca să își revină.\n\nDetalii: {e.Exception.Message}", "Eroare MDHelper", MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageBox.Show($"O eroare neprevăzută a apărut pe thread-ul principal. Aplicația va încerca să își revină.\n\nDetalii: {e.Exception.Message}", "Eroare MDTab-Helper", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)

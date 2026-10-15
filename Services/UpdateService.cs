@@ -170,7 +170,21 @@ public class UpdateService
             File.Move(currentExe, backupExe, overwrite: true);
 
             // 3. Move the downloaded update directly into the current executable path
-            File.Move(tempDownloadedExe, currentExe, overwrite: true);
+            try
+            {
+                // File.Copy works seamlessly across different disk drives/volumes
+                File.Copy(tempDownloadedExe, currentExe, overwrite: true);
+                try { File.Delete(tempDownloadedExe); } catch { }
+            }
+            catch
+            {
+                // Rollback: if placing the new file failed, restore original executable
+                if (!File.Exists(currentExe) && File.Exists(backupExe))
+                {
+                    try { File.Move(backupExe, currentExe); } catch { }
+                }
+                throw;
+            }
 
             // 4. Launch the updated executable directly without any intermediate batch scripts
             var startInfo = new ProcessStartInfo
@@ -194,6 +208,11 @@ public class UpdateService
                 {
                     Thread.Sleep(1000);
                 }
+            }
+
+            if (newProcess == null)
+            {
+                throw new InvalidOperationException("Process launch timed out during security scan.");
             }
 
             // 5. Cleanly shut down this older instance
@@ -223,8 +242,10 @@ if not errorlevel 1 (
     if %RETRIES% lss 15 goto WAIT_LOOP
 )
 
-copy /y ""{tempDownloadedExe}"" ""{currentExe}"" >nul
-del /f /q ""{tempDownloadedExe}"" >nul
+if exist ""{tempDownloadedExe}"" (
+    copy /y ""{tempDownloadedExe}"" ""{currentExe}"" >nul
+    del /f /q ""{tempDownloadedExe}"" >nul
+)
 start """" ""{currentExe}""
 del /f /q ""%~f0""
 exit
