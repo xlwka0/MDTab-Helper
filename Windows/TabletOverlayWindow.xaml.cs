@@ -1604,36 +1604,6 @@ public partial class TabletOverlayWindow : Window
         }
     }
 
-    private void DutyDoctorRow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is FrameworkElement el && el.Tag is OnDutyDoctor doc)
-        {
-            try
-            {
-                Clipboard.SetText(doc.FullDisplayName);
-                ShowDutyCopyToast($"Copiat: {doc.FullDisplayName}");
-            }
-            catch
-            {
-            }
-        }
-    }
-
-    private void DutyCopyDoctorBtn_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.Tag is OnDutyDoctor doc)
-        {
-            try
-            {
-                Clipboard.SetText(doc.FullDisplayName);
-                ShowDutyCopyToast($"Copiat: {doc.FullDisplayName}");
-            }
-            catch
-            {
-            }
-        }
-    }
-
     private void ShowDutyCopyToast(string message)
     {
         DutyCopyToastText.Text = message;
