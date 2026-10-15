@@ -179,7 +179,22 @@ public class UpdateService
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(currentExe) ?? ""
             };
-            Process.Start(startInfo);
+
+            // Microsoft Defender Cloud Security Scan can hold the new file for up to 10 seconds.
+            // Retry launching gracefully until Defender scan finishes.
+            Process? newProcess = null;
+            for (int attempt = 0; attempt < 15; attempt++)
+            {
+                try
+                {
+                    newProcess = Process.Start(startInfo);
+                    if (newProcess != null) break;
+                }
+                catch
+                {
+                    Thread.Sleep(1000);
+                }
+            }
 
             // 5. Cleanly shut down this older instance
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
