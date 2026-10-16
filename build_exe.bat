@@ -20,7 +20,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Folderul destinatie
-set "TARGET_DIR=%USERPROFILE%\Desktop\MDTab-Helper"
+if exist "%USERPROFILE%\Desktop\MDTab Helper" (
+    set "TARGET_DIR=%USERPROFILE%\Desktop\MDTab Helper"
+) else (
+    set "TARGET_DIR=%USERPROFILE%\Desktop\MDTab-Helper"
+)
 
 echo [1/2] Se curata si se pregateste folderul destinatie: %TARGET_DIR%...
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"

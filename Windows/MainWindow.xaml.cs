@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using MDHelper.Models;
@@ -35,9 +36,11 @@ public partial class MainWindow : Window
         StartupService.SyncStartupWithConfig(_config.Keybind.StartWithWindows);
 
         // Force handle creation so hotkeys register silently in background without showing the window
-        new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle();
+        var helper = new System.Windows.Interop.WindowInteropHelper(this);
+        helper.EnsureHandle();
 
         _keybind = new KeybindOrchestrator(_config.Keybind);
+        _keybind.Initialize(this);
         _keybind.OverlayToggleRequested += Keybind_OverlayToggleRequested;
         _keybind.TabletToggleRequested += Keybind_TabletToggleRequested;
         _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
@@ -48,13 +51,6 @@ public partial class MainWindow : Window
         _copilot.Start();
 
         InitializeTrayIcon();
-
-        SourceInitialized += MainWindow_SourceInitialized;
-    }
-
-    private void MainWindow_SourceInitialized(object? sender, EventArgs e)
-    {
-        _keybind?.Initialize(this);
     }
 
     private void LoadConfiguration()
@@ -637,12 +633,27 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowMainWindow()
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    private const int SW_RESTORE = 9;
+
+    public void ShowMainWindow()
     {
         Show();
         WindowState = WindowState.Normal;
         Activate();
         Focus();
+
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            ShowWindow(hwnd, SW_RESTORE);
+            SetForegroundWindow(hwnd);
+        }
     }
 
     private void ToggleMainWindowVisibility()

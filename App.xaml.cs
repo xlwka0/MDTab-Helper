@@ -1,13 +1,64 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 
 namespace MDHelper;
 
 public partial class App : Application
 {
+    private static Mutex? _instanceMutex;
+    private const string MutexName = @"Local\MDTab-Helper-SingleInstance-Mutex";
+
+    public static void ReleaseInstanceMutex()
+    {
+        if (_instanceMutex != null)
+        {
+            try
+            {
+                _instanceMutex.ReleaseMutex();
+                _instanceMutex.Dispose();
+            }
+            catch { }
+            _instanceMutex = null;
+        }
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        bool isUpdateRestart = false;
+        foreach (var arg in e.Args)
+        {
+            if (arg.Equals("--updated", StringComparison.OrdinalIgnoreCase))
+            {
+                isUpdateRestart = true;
+                break;
+            }
+        }
+
+        bool createdNew = false;
+        try
+        {
+            _instanceMutex = new Mutex(true, MutexName, out createdNew);
+            if (!createdNew && isUpdateRestart)
+            {
+                // Give previous instance up to 5 seconds to fully release
+                createdNew = _instanceMutex.WaitOne(5000);
+            }
+        }
+        catch (AbandonedMutexException)
+        {
+            createdNew = true;
+        }
+
+        if (!createdNew)
+        {
+            // Another instance is already running: silently exit immediately
+            Shutdown();
+            return;
+        }
+
         // 1. UI Thread Exceptions (WPF UI Thread)
         DispatcherUnhandledException += App_DispatcherUnhandledException;
 
@@ -35,6 +86,12 @@ public partial class App : Application
         // Instantiate MainWindow silently in background (does not call Show)
         var mainWindow = new MDHelper.Windows.MainWindow();
         MainWindow = mainWindow;
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        ReleaseInstanceMutex();
+        base.OnExit(e);
     }
 
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)

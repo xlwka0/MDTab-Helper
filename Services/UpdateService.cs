@@ -186,10 +186,14 @@ public class UpdateService
                 throw;
             }
 
+            // Release single-instance mutex so the new updated process can acquire it immediately
+            App.ReleaseInstanceMutex();
+
             // 4. Launch the updated executable directly without any intermediate batch scripts
             var startInfo = new ProcessStartInfo
             {
                 FileName = currentExe,
+                Arguments = "--updated",
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(currentExe) ?? ""
             };
@@ -227,6 +231,8 @@ public class UpdateService
             // If direct atomic rename failed (e.g. cross-volume or special permissions), fallback to script
         }
 
+        App.ReleaseInstanceMutex();
+
         int currentPid = Environment.ProcessId;
         string batPath = Path.Combine(Path.GetTempPath(), $"mdtab_updater_{Guid.NewGuid():N}.bat");
 
@@ -246,7 +252,7 @@ if exist ""{tempDownloadedExe}"" (
     copy /y ""{tempDownloadedExe}"" ""{currentExe}"" >nul
     del /f /q ""{tempDownloadedExe}"" >nul
 )
-start """" ""{currentExe}""
+start """" ""{currentExe}"" --updated
 del /f /q ""%~f0""
 exit
 ";
