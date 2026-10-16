@@ -1558,13 +1558,14 @@ public partial class TabletOverlayWindow : Window
 
         foreach (var group in _currentDutyResult.Groups)
         {
-            // Rank filter check
+            // Rank filter check (strictly Asistent - Primar)
             if (filter != "Toți")
             {
-                if (filter == "Specialiști" && !group.Grad.Contains("Speciali", StringComparison.OrdinalIgnoreCase)) continue;
-                if (filter == "Rezidenți" && !group.Grad.Contains("Reziden", StringComparison.OrdinalIgnoreCase)) continue;
-                if (filter == "Stagiari" && !group.Grad.Contains("Stagiar", StringComparison.OrdinalIgnoreCase)) continue;
-                if (filter == "Asistenți" && !group.Grad.Contains("Asistent", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Primari" || filter == "Medici Primari") && !group.Grad.Contains("Primar", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Specialiști" || filter == "Medici Specialiști") && !group.Grad.Contains("Speciali", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Rezidenți" || filter == "Medici Rezidenți") && !group.Grad.Contains("Reziden", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Stagiari" || filter == "Medici Stagiari") && !group.Grad.Contains("Stagiar", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Asistenți" || filter == "Asistenți Medicali") && !group.Grad.Contains("Asistent", StringComparison.OrdinalIgnoreCase)) continue;
             }
 
             // Search query filter (Matches Name, Indicativ or CNP)

@@ -31,13 +31,13 @@ public sealed class OnDutyService
 
     private const string WebhookUrl = "https://discord.com/api/webhooks/1559981949685076089/F8INgAQjFKfqSfuQ5GnVYZEbUneq4a-Bn9bzc5Qk503rW8gIRXLRZtUkPVMdi-k9hbsm/messages/1559982022036824108";
 
-    // Regex to match lines like: "• [**M-207**] **Daria Power** (`24357`)" or "  [**M-207**] **Daria Power** (`24357`)" or "**Livius Demedici** (`25`)"
+    // Regex to match lines like: "• [**M-207**] **Daria Power** (`24357`)" or "  [M-101] **Livius** (`25`)"
     private static readonly Regex DoctorRegex = new(
-        @"(?:•|\*|-)?\s*(?:\[\*\*([^*\]]+)\*\*\]\s*)?\*\*([^*]+)\*\*\s*\(`?(\d+)`?\)",
+        @"(?:•|\*|-)?\s*(?:\[\*{0,2}([^*\]]+)\*{0,2}\]\s*)?\*\*([^*]+)\*\*\s*\(`?\s*(\d+)\s*`?\)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase
     );
 
-    // Regex to strip count "(3)" from field name like "Medici Specialiști (3)"
+    // Regex to strip count "(3)" from field name like "Medici Specialiști (3)" or "Medici Primari (1)"
     private static readonly Regex RankStripRegex = new(
         @"\s*\(\d+\)\s*$",
         RegexOptions.Compiled
@@ -45,7 +45,7 @@ public sealed class OnDutyService
 
     static OnDutyService()
     {
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDTab-Helper/2.5");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDTab-Helper/2.5.3");
     }
 
     public async Task<OnDutyResult> FetchOnDutyDataAsync(CancellationToken cancellationToken = default)
@@ -101,6 +101,13 @@ public sealed class OnDutyService
                     if (string.IsNullOrWhiteSpace(rawValue)) continue;
 
                     string cleanRank = RankStripRegex.Replace(rawName, "").Trim();
+
+                    // Filter: strictly only medical staff from Asistent to Primar (exclude Directori, Inspectori, etc.)
+                    if (!OnDutyDoctor.IsAllowedDutyRank(cleanRank))
+                    {
+                        continue;
+                    }
+
                     int rankOrder = OnDutyDoctor.GetRankOrder(cleanRank);
                     string rankColor = OnDutyDoctor.GetRankColor(cleanRank);
 
