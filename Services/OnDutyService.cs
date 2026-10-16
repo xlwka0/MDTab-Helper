@@ -45,7 +45,7 @@ public sealed class OnDutyService
 
     static OnDutyService()
     {
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDTab-Helper/2.5.3");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MDTab-Helper/2.5.4");
     }
 
     public async Task<OnDutyResult> FetchOnDutyDataAsync(CancellationToken cancellationToken = default)

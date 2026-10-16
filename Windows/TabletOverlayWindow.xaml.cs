@@ -162,10 +162,16 @@ public partial class TabletOverlayWindow : Window
         }
     }
 
-    private async void InitializeWebView()
+    private string _pendingUrl = string.Empty;
+
+    private async void InitializeWebView(string? targetUrl = null)
     {
         try
         {
+            string dest = !string.IsNullOrWhiteSpace(targetUrl) 
+                ? targetUrl 
+                : (!string.IsNullOrWhiteSpace(_pendingUrl) ? _pendingUrl : _settings.TabletUrl);
+
             // Set up a persistent User Data folder so sessions and logins are memorized
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string userFolder = Path.Combine(appData, "MDTab-Helper", "TabletCache");
@@ -177,18 +183,26 @@ public partial class TabletOverlayWindow : Window
             _webViewInitialized = true;
             LoadingIndicator.Visibility = Visibility.Collapsed;
 
-            // Nav to default URL
-            TabletWebView.Source = new Uri(_settings.TabletUrl);
-            UrlTextBox.Text = _settings.TabletUrl;
-
             // Wire up webview events
             TabletWebView.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
             TabletWebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
             TabletWebView.CoreWebView2.SourceChanged += CoreWebView2_SourceChanged;
+            TabletWebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
 
             // Apply default zoom
             TabletWebView.CoreWebView2.Settings.IsZoomControlEnabled = true;
             ApplyZoom();
+
+            // Navigate to requested destination URL
+            string finalDest = !string.IsNullOrWhiteSpace(_pendingUrl) ? _pendingUrl : dest;
+            if (!finalDest.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !finalDest.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                finalDest = "https://" + finalDest;
+            }
+
+            TabletWebView.Source = new Uri(finalDest);
+            UrlTextBox.Text = finalDest;
         }
         catch (Exception ex)
         {
@@ -212,6 +226,15 @@ public partial class TabletOverlayWindow : Window
         if (TabletWebView.Source != null)
         {
             UrlTextBox.Text = TabletWebView.Source.ToString();
+        }
+    }
+
+    private void CoreWebView2_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+    {
+        e.Handled = true;
+        if (!string.IsNullOrWhiteSpace(e.Uri))
+        {
+            NavigateTo(e.Uri);
         }
     }
 
@@ -1309,16 +1332,23 @@ public partial class TabletOverlayWindow : Window
         DesktopGrid.Visibility = Visibility.Visible;
     }
 
-    private void EnsureWebViewInitialized()
+    private void EnsureWebViewInitialized(string? targetUrl = null)
     {
+        string dest = !string.IsNullOrWhiteSpace(targetUrl)
+            ? targetUrl
+            : (!string.IsNullOrWhiteSpace(UrlTextBox.Text) ? UrlTextBox.Text : _settings.TabletUrl);
+
+        _pendingUrl = dest;
+        UrlTextBox.Text = dest;
+
         if (!_webViewInitialized)
         {
             _webViewInitialized = true;
-            InitializeWebView();
+            InitializeWebView(dest);
         }
         else
         {
-            NavigateTo(UrlTextBox.Text);
+            NavigateTo(dest);
         }
     }
 
@@ -1326,35 +1356,28 @@ public partial class TabletOverlayWindow : Window
     {
         UrlTextBox.Text = "https://md.b-zone.ro";
         OpenApp(WebTabContent, true);
-        EnsureWebViewInitialized();
+        EnsureWebViewInitialized("https://md.b-zone.ro");
     }
 
     private void RpgPanelApp_Click(object sender, RoutedEventArgs e)
     {
         UrlTextBox.Text = "https://gta5.ro";
         OpenApp(WebTabContent, true);
-        EnsureWebViewInitialized();
+        EnsureWebViewInitialized("https://gta5.ro");
     }
 
     private void MaiApp_Click(object sender, RoutedEventArgs e)
     {
         UrlTextBox.Text = "https://mai.b-zone.ro";
         OpenApp(WebTabContent, true);
-        EnsureWebViewInitialized();
+        EnsureWebViewInitialized("https://mai.b-zone.ro");
     }
 
-    private void PrimarieApp_Click(object sender, RoutedEventArgs e)
+    private void GovApp_Click(object sender, RoutedEventArgs e)
     {
-        UrlTextBox.Text = "https://primarie.b-zone-business.ro/";
+        UrlTextBox.Text = "https://gov.b-zone.ro/";
         OpenApp(WebTabContent, true);
-        EnsureWebViewInitialized();
-    }
-
-    private void JudecatorieApp_Click(object sender, RoutedEventArgs e)
-    {
-        UrlTextBox.Text = "https://judecatorie-b-zone.ro/";
-        OpenApp(WebTabContent, true);
-        EnsureWebViewInitialized();
+        EnsureWebViewInitialized("https://gov.b-zone.ro/");
     }
 
     private void OverlaysApp_Click(object sender, RoutedEventArgs e)
