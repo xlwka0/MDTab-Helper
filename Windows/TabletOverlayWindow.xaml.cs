@@ -264,7 +264,8 @@ public partial class TabletOverlayWindow : Window
             ScreenBorder.CornerRadius = new CornerRadius(8);
 
             HardwareNotch.Visibility = Visibility.Collapsed;
-            BottomBar.Visibility = Visibility.Collapsed;
+            BottomBar.Visibility = Visibility.Visible;
+            BottomBar.CornerRadius = new CornerRadius(0, 0, 8, 8);
 
             ThemeBtn.Content = "🌐 Ecran";
         }
@@ -280,6 +281,7 @@ public partial class TabletOverlayWindow : Window
 
             HardwareNotch.Visibility = Visibility.Visible;
             BottomBar.Visibility = Visibility.Visible;
+            BottomBar.CornerRadius = new CornerRadius(0, 0, 18, 18);
 
             ThemeBtn.Content = "📱 Ramă";
         }
