@@ -51,6 +51,8 @@ public partial class TabletOverlayWindow : Window
     private readonly UpdateService _updateService = new();
     private UpdateInfo? _availableUpdate;
     private CancellationTokenSource? _updateCts;
+    private bool _wasWebViewVisibleBeforeModal = false;
+    private bool _wasWebViewVisibleBeforeLock = false;
 
     public event EventHandler? SettingsSaved;
 
@@ -1277,6 +1279,16 @@ public partial class TabletOverlayWindow : Window
 
     private void LockTablet()
     {
+        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible)
+        {
+            _wasWebViewVisibleBeforeLock = true;
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Hidden;
+        }
+        else
+        {
+            _wasWebViewVisibleBeforeLock = false;
+        }
+
         LockscreenGrid.Visibility = Visibility.Visible;
         StopDutyAutoRefresh();
     }
@@ -1284,6 +1296,13 @@ public partial class TabletOverlayWindow : Window
     private void UnlockTablet()
     {
         LockscreenGrid.Visibility = Visibility.Collapsed;
+
+        if (_wasWebViewVisibleBeforeLock)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeLock = false;
+        }
+
         if (DutySidebarBorder != null && DutySidebarBorder.Visibility == Visibility.Visible)
         {
             StartDutyAutoRefresh();
@@ -1340,6 +1359,13 @@ public partial class TabletOverlayWindow : Window
 
     private void OpenApp(Grid appGrid, bool showBrowserToolbar = false)
     {
+        if (appGrid == WebTabContent)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeModal = false;
+            _wasWebViewVisibleBeforeLock = false;
+        }
+
         DesktopGrid.Visibility = Visibility.Collapsed;
         WebTabContent.Visibility = Visibility.Collapsed;
         OverlaysTabContent.Visibility = Visibility.Collapsed;
@@ -1353,6 +1379,23 @@ public partial class TabletOverlayWindow : Window
 
     private void CloseAllAppsAndGoHome()
     {
+        if (UpdateModalGrid != null && UpdateModalGrid.Visibility == Visibility.Visible)
+        {
+            CancelUpdateBtn_Click(this, new RoutedEventArgs());
+        }
+
+        if (_wasWebViewVisibleBeforeModal)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeModal = false;
+        }
+
+        if (_wasWebViewVisibleBeforeLock)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeLock = false;
+        }
+
         WebTabContent.Visibility = Visibility.Collapsed;
         OverlaysTabContent.Visibility = Visibility.Collapsed;
         KeybindsTabContent.Visibility = Visibility.Collapsed;
@@ -2075,6 +2118,16 @@ public partial class TabletOverlayWindow : Window
 
     private void ShowUpdateModal(UpdateInfo update)
     {
+        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible)
+        {
+            _wasWebViewVisibleBeforeModal = true;
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Hidden;
+        }
+        else
+        {
+            _wasWebViewVisibleBeforeModal = false;
+        }
+
         UpdateModalVersionText.Text = $"v{update.NewVersion}";
         if (update.FileSizeBytes > 0)
         {
@@ -2103,6 +2156,12 @@ public partial class TabletOverlayWindow : Window
     {
         _updateCts?.Cancel();
         UpdateModalGrid.Visibility = Visibility.Collapsed;
+
+        if (_wasWebViewVisibleBeforeModal)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeModal = false;
+        }
     }
 
     private async void ConfirmUpdateBtn_Click(object sender, RoutedEventArgs e)
