@@ -160,6 +160,20 @@ public partial class TabletOverlayWindow : Window
             var culture = new System.Globalization.CultureInfo("ro-RO");
             LockscreenDateText.Text = now.ToString("dddd, d MMMM", culture);
         }
+
+        bool isGameRunning = GameProcessHelper.IsGameRunning();
+        if (DutyTitleBarToggleBtn != null)
+        {
+            DutyTitleBarToggleBtn.Opacity = isGameRunning ? 1.0 : 0.55;
+            DutyTitleBarToggleBtn.ToolTip = isGameRunning
+                ? "Comută afișarea listei laterale de Medici la Datorie"
+                : "🔒 Medici Duty (Disponibil doar când jocul GTA V / RAGE:MP este pornit)";
+        }
+
+        if (_isSidebarExpanded && !isGameRunning)
+        {
+            DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
+        }
     }
 
     private string _pendingUrl = string.Empty;
@@ -501,8 +515,15 @@ public partial class TabletOverlayWindow : Window
         Focus();
         if (_isSidebarExpanded && LockscreenGrid != null && LockscreenGrid.Visibility != Visibility.Visible)
         {
-            StartDutyAutoRefresh();
-            _ = RefreshOnDutyDataAsync(showLoading: false);
+            if (!GameProcessHelper.IsGameRunning())
+            {
+                DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
+            }
+            else
+            {
+                StartDutyAutoRefresh();
+                _ = RefreshOnDutyDataAsync(showLoading: false);
+            }
         }
         if (_settings.TabletPlaySounds)
         {
@@ -1263,8 +1284,15 @@ public partial class TabletOverlayWindow : Window
         LockscreenGrid.Visibility = Visibility.Collapsed;
         if (DutySidebarBorder != null && DutySidebarBorder.Visibility == Visibility.Visible)
         {
-            StartDutyAutoRefresh();
-            _ = RefreshOnDutyDataAsync(showLoading: false);
+            if (!GameProcessHelper.IsGameRunning())
+            {
+                DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
+            }
+            else
+            {
+                StartDutyAutoRefresh();
+                _ = RefreshOnDutyDataAsync(showLoading: false);
+            }
         }
     }
 
@@ -1432,6 +1460,17 @@ public partial class TabletOverlayWindow : Window
     private void DutySidebarExpandBtn_Click(object sender, RoutedEventArgs e)
     {
         if (_isSidebarExpanded) return;
+
+        if (!GameProcessHelper.IsGameRunning(bypassCache: true))
+        {
+            MessageBox.Show(
+                "Dispeceratul 'Medici la Datorie' este disponibil doar atunci când jocul (GTA V / RAGE:MP) este pornit.",
+                "Dispecerat On-Duty",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
         _isSidebarExpanded = true;
 
         if (DutySidebarBorder != null && DutySidebarCol != null)
@@ -1495,6 +1534,11 @@ public partial class TabletOverlayWindow : Window
             {
                 if (Visibility == Visibility.Visible && DutySidebarBorder != null && DutySidebarBorder.Visibility == Visibility.Visible && LockscreenGrid != null && LockscreenGrid.Visibility != Visibility.Visible)
                 {
+                    if (!GameProcessHelper.IsGameRunning())
+                    {
+                        DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
+                        return;
+                    }
                     await RefreshOnDutyDataAsync(showLoading: false);
                 }
             };

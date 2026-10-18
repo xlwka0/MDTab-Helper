@@ -16,7 +16,16 @@ public sealed class ChatSequenceService
         _input = input;
     }
 
-    public async Task RunAsync(KeybindSettings settings, KeybindEntry entry, CancellationToken cancellationToken)
+    public Task RunAsync(KeybindSettings settings, KeybindEntry entry, CancellationToken cancellationToken)
+    {
+        return RunAsync(settings, entry, null, cancellationToken);
+    }
+
+    public async Task RunAsync(
+        KeybindSettings settings,
+        KeybindEntry entry,
+        Func<bool>? isGameFocused,
+        CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -33,30 +42,73 @@ public sealed class ChatSequenceService
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
+
                 cancellationToken.ThrowIfCancellationRequested();
+                if (isGameFocused != null && !isGameFocused())
+                {
+                    throw new OperationCanceledException("Fereastra jocului nu mai este activă. Comanda a fost oprită.");
+                }
 
-                // 1) press T
+                // 1) Press Chat Open Key (default: T)
                 await _input.KeyPressAsync((ushort)settings.ChatOpenVirtualKey);
-                await Task.Delay(Math.Max(0, settings.DelayAfterChatOpenMs), cancellationToken);
+                await DelayWithCheckAsync(Math.Max(0, settings.DelayAfterChatOpenMs), isGameFocused, cancellationToken);
 
-                // 2) type text
+                cancellationToken.ThrowIfCancellationRequested();
+                if (isGameFocused != null && !isGameFocused())
+                {
+                    throw new OperationCanceledException("Fereastra jocului nu mai este activă. Comanda a fost oprită.");
+                }
+
+                // 2) Type text line
                 await _input.TextAsync(line);
-                await Task.Delay(Math.Max(0, settings.DelayAfterTextMs), cancellationToken);
+                await DelayWithCheckAsync(Math.Max(0, settings.DelayAfterTextMs), isGameFocused, cancellationToken);
 
-                // press Enter
+                cancellationToken.ThrowIfCancellationRequested();
+                if (isGameFocused != null && !isGameFocused())
+                {
+                    throw new OperationCanceledException("Fereastra jocului nu mai este activă. Comanda a fost oprită.");
+                }
+
+                // 3) Press Enter
                 await _input.KeyPressAsync(0x0D);
-                await Task.Delay(Math.Max(0, settings.DelayAfterEnterMs), cancellationToken);
+                await DelayWithCheckAsync(Math.Max(0, settings.DelayAfterEnterMs), isGameFocused, cancellationToken);
 
-                // 3) wait 3 sec (or configured) between lines
+                // 4) Wait between lines if more lines remain
                 if (i < lines.Count - 1)
                 {
-                    await Task.Delay(Math.Max(0, settings.DelayMs), cancellationToken);
+                    await DelayWithCheckAsync(Math.Max(0, settings.DelayMs), isGameFocused, cancellationToken);
                 }
             }
         }
         finally
         {
+            _input.ReleaseModifiers();
             _gate.Release();
+        }
+    }
+
+    private static async Task DelayWithCheckAsync(int delayMs, Func<bool>? isGameFocused, CancellationToken cancellationToken)
+    {
+        if (delayMs <= 0) return;
+
+        int remaining = delayMs;
+        while (remaining > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (isGameFocused != null && !isGameFocused())
+            {
+                throw new OperationCanceledException("Fereastra jocului nu mai este activă. Comanda a fost oprită.");
+            }
+
+            int step = Math.Min(remaining, 35);
+            await Task.Delay(step, cancellationToken);
+            remaining -= step;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (isGameFocused != null && !isGameFocused())
+        {
+            throw new OperationCanceledException("Fereastra jocului nu mai este activă. Comanda a fost oprită.");
         }
     }
 }

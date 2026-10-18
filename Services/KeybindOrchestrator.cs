@@ -187,8 +187,8 @@ public sealed class KeybindOrchestrator : IDisposable
 
         if (!Settings.GlobalEnabled) return;
 
-        // Ensure keybinds only trigger when GTA5 is the active foreground window
-        if (!IsGta5Foreground()) return;
+        // Ensure custom keybinds only trigger when the game is the active foreground window
+        if (!GameProcessHelper.IsGameForeground()) return;
 
         if (hotkeyId == STOP_TOGGLE_HOTKEY_ID)
         {
@@ -203,13 +203,36 @@ public sealed class KeybindOrchestrator : IDisposable
         {
             _runCts?.Cancel();
             _runCts = new CancellationTokenSource();
+            var cts = _runCts;
+            var token = cts.Token;
+
+            // Continually monitor foreground window while keybind executes:
+            // If user leaves the game / switches app, kill the keybind immediately!
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!token.IsCancellationRequested)
+                    {
+                        await Task.Delay(25, token).ConfigureAwait(false);
+                        if (!GameProcessHelper.IsGameForeground())
+                        {
+                            cts.Cancel();
+                            break;
+                        }
+                    }
+                }
+                catch { }
+            }, token);
+
             SoundService.PlayKeybindStart();
-            await _sequence.RunAsync(Settings, entry, _runCts.Token);
+            await _sequence.RunAsync(Settings, entry, GameProcessHelper.IsGameForeground, token);
             SoundService.PlayKeybindFinish();
         }
         catch (OperationCanceledException)
         {
-            // Ignore when canceled
+            // Command was killed because user left the game or pressed stop key
+            SoundService.PlayKeybindStop();
         }
         catch (Exception ex)
         {
@@ -265,27 +288,7 @@ public sealed class KeybindOrchestrator : IDisposable
 
     public static bool IsGta5Foreground()
     {
-        IntPtr hwnd = GetForegroundWindow();
-        if (hwnd == IntPtr.Zero) return false;
-
-        GetWindowThreadProcessId(hwnd, out uint pid);
-        if (pid == 0) return false;
-
-        try
-        {
-            using var proc = System.Diagnostics.Process.GetProcessById((int)pid);
-            string name = proc.ProcessName;
-            return name.Equals("gta5", StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("GTA5", StringComparison.OrdinalIgnoreCase) ||
-                   name.StartsWith("gta5", StringComparison.OrdinalIgnoreCase) ||
-                   name.StartsWith("GTA5", StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("PlayGTAV", StringComparison.OrdinalIgnoreCase) ||
-                   name.StartsWith("FiveM", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
+        return GameProcessHelper.IsGameForeground();
     }
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
