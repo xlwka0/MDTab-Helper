@@ -1284,6 +1284,13 @@
                             <Border Background="#A50A0E17"/>
                             
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <!-- Greeting -->
+                                <TextBlock x:Name="LockscreenGreetingText" Text="Bună ziua, spor la muncă!" Foreground="#E2E8F0" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect BlurRadius="8" Color="Black" Opacity="0.6" ShadowDepth="1"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+
                                 <!-- Clock -->
                                 <TextBlock x:Name="LockscreenClockText" Text="12:45" Foreground="White" FontSize="72" FontWeight="Light" HorizontalAlignment="Center" Margin="0,0,0,5">
                                     <TextBlock.Effect>

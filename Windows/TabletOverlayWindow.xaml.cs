@@ -155,6 +155,10 @@ public partial class TabletOverlayWindow : Window
         var now = DateTime.Now;
         ClockText.Text = now.ToString("HH:mm:ss");
 
+        if (LockscreenGreetingText != null)
+        {
+            LockscreenGreetingText.Text = GetTimeBasedGreeting(now);
+        }
         if (LockscreenClockText != null)
         {
             LockscreenClockText.Text = now.ToString("HH:mm");
@@ -1289,8 +1293,30 @@ public partial class TabletOverlayWindow : Window
             _wasWebViewVisibleBeforeLock = false;
         }
 
+        if (LockscreenGreetingText != null)
+        {
+            LockscreenGreetingText.Text = GetTimeBasedGreeting(DateTime.Now);
+        }
+
         LockscreenGrid.Visibility = Visibility.Visible;
         StopDutyAutoRefresh();
+    }
+
+    private static string GetTimeBasedGreeting(DateTime now)
+    {
+        int hour = now.Hour;
+        if (hour >= 5 && hour < 12)
+        {
+            return "Bună dimineața, spor la muncă!";
+        }
+        else if (hour >= 12 && hour < 18)
+        {
+            return "Bună ziua, spor la muncă!";
+        }
+        else
+        {
+            return "Bună seara, spor la muncă!";
+        }
     }
 
     private void UnlockTablet()
