@@ -35,7 +35,7 @@ public class OnDutyDoctor
                lower.Contains("speciali") ||
                lower.Contains("reziden") ||
                lower.Contains("stagiar") ||
-               lower.Contains("asistent");
+               lower.Contains("asisten");
     }
 
     public static int GetRankOrder(string rank)
@@ -46,7 +46,7 @@ public class OnDutyDoctor
         if (lower.Contains("speciali")) return 2;
         if (lower.Contains("reziden")) return 3;
         if (lower.Contains("stagiar")) return 4;
-        if (lower.Contains("asistent")) return 5;
+        if (lower.Contains("asisten")) return 5;
         return 99;
     }
 
@@ -58,7 +58,7 @@ public class OnDutyDoctor
         if (lower.Contains("speciali")) return "#00E5FF"; // Bright Cyan
         if (lower.Contains("reziden")) return "#818CF8"; // Indigo
         if (lower.Contains("stagiar")) return "#34D399"; // Emerald
-        if (lower.Contains("asistent")) return "#F59E0B"; // Amber
+        if (lower.Contains("asisten")) return "#F59E0B"; // Amber
         return "#38BDF8"; // Sky Blue
     }
 }

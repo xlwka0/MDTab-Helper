@@ -1747,7 +1747,7 @@ public partial class TabletOverlayWindow : Window
                 if ((filter == "Specialiști" || filter == "Medici Specialiști") && !group.Grad.Contains("Speciali", StringComparison.OrdinalIgnoreCase)) continue;
                 if ((filter == "Rezidenți" || filter == "Medici Rezidenți") && !group.Grad.Contains("Reziden", StringComparison.OrdinalIgnoreCase)) continue;
                 if ((filter == "Stagiari" || filter == "Medici Stagiari") && !group.Grad.Contains("Stagiar", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Asistenți" || filter == "Asistenți Medicali") && !group.Grad.Contains("Asistent", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Asistenți" || filter == "Asistenți Medicali") && !group.Grad.Contains("Asisten", StringComparison.OrdinalIgnoreCase)) continue;
             }
 
             // Search query filter (Matches Name, Indicativ or CNP)
