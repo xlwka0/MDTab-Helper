@@ -189,6 +189,11 @@ public partial class TabletOverlayWindow : Window
                 _ = CheckAndRefreshDutyAsync(showLoading: true);
             }
         }
+
+        if (now.Minute % 10 == 0 && now.Second == 0)
+        {
+            _ = CheckForUpdatesSilentlyAsync();
+        }
     }
 
     private string _pendingUrl = string.Empty;
@@ -537,6 +542,8 @@ public partial class TabletOverlayWindow : Window
         {
             SoundService.PlayOverlayShow();
         }
+
+        _ = CheckForUpdatesSilentlyAsync();
     }
 
     public void HideTablet()
@@ -2054,8 +2061,16 @@ public partial class TabletOverlayWindow : Window
 
     #region Auto-Update Logic
 
-    private async Task CheckForUpdatesSilentlyAsync()
+    private DateTime _lastUpdateCheckTime = DateTime.MinValue;
+
+    private async Task CheckForUpdatesSilentlyAsync(bool force = false)
     {
+        if (!force && (DateTime.UtcNow - _lastUpdateCheckTime).TotalSeconds < 30)
+        {
+            return;
+        }
+        _lastUpdateCheckTime = DateTime.UtcNow;
+
         try
         {
             var update = await _updateService.CheckForUpdatesAsync();
