@@ -1474,10 +1474,6 @@ public partial class TabletOverlayWindow : Window
     // ON-DUTY MEDICS DISPATCH SYSTEM (SIDEBAR)
     // ==========================================
 
-    private void OnDutyApp_Click(object sender, RoutedEventArgs e)
-    {
-        DutySidebarToggle_Click(sender, e);
-    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT
