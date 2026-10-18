@@ -191,8 +191,8 @@
         <!-- LIVE ON-DUTY SIDEBAR (Pops out to the left of the tablet) -->
         <Border Grid.Column="0" x:Name="DutySidebarBorder" 
                 Visibility="Collapsed" 
-                Width="298" 
-                Margin="0,0,12,0" 
+                Width="345" 
+                Margin="0,0,15,0" 
                 Background="#10141D" 
                 BorderBrush="#1EFFFFFF" 
                 BorderThickness="1" 
@@ -260,6 +260,15 @@
 
                 <!-- Sidebar Body: Doctors List or States -->
                 <Grid Grid.Row="1">
+                    <!-- Game Offline / Inactive State -->
+                    <Border x:Name="DutyGameOfflineState" Background="#0C101A" Panel.ZIndex="12" Visibility="Collapsed" Padding="20,24">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="Inactiv" Foreground="#F1F5F9" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <TextBlock Text="Nu poți vedea persoanele pe tură în acest moment" Foreground="#CBD5E1" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="290" Margin="0,0,0,10"/>
+                            <TextBlock Text="Acesta devine activ automat atunci când jocul este pornit" Foreground="#64748B" FontSize="12" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="290"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Loading State -->
                     <Border x:Name="DutyLoadingIndicator" Background="#0C101A" Panel.ZIndex="10" Visibility="Collapsed">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -326,7 +335,7 @@
                                                                 </Ellipse>
 
                                                                 <!-- Doctor Name in bold white -->
-                                                                <TextBlock Text="{Binding Nume}" Foreground="White" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="150"/>
+                                                                <TextBlock Text="{Binding Nume}" Foreground="White" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
 
                                                                 <!-- CNP in parentheses -->
                                                                 <TextBlock Text="{Binding Cnp, StringFormat=' ({0})'}" Foreground="#9E9EA7" FontSize="12" VerticalAlignment="Center" Margin="3,0,0,0"/>

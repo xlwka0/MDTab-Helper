@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -45,7 +47,7 @@ public partial class TabletOverlayWindow : Window
     private string _dutySearchText = string.Empty;
     private string _dutyRankFilter = "Toți";
     private bool _isSidebarExpanded = false;
-    private const double DutySidebarTotalWidth = 310;
+    private const double DutySidebarTotalWidth = 360;
     private readonly UpdateService _updateService = new();
     private UpdateInfo? _availableUpdate;
     private CancellationTokenSource? _updateCts;
@@ -164,15 +166,22 @@ public partial class TabletOverlayWindow : Window
         bool isGameRunning = GameProcessHelper.IsGameRunning();
         if (DutyTitleBarToggleBtn != null)
         {
-            DutyTitleBarToggleBtn.Opacity = isGameRunning ? 1.0 : 0.55;
+            DutyTitleBarToggleBtn.Opacity = isGameRunning ? 1.0 : 0.85;
             DutyTitleBarToggleBtn.ToolTip = isGameRunning
                 ? "Comută afișarea listei laterale de Medici la Datorie"
-                : "🔒 Medici Duty (Disponibil doar când jocul GTA V / RAGE:MP este pornit)";
+                : "Medici Duty (Inactiv - Neconectat la server)";
         }
 
-        if (_isSidebarExpanded && !isGameRunning)
+        if (_isSidebarExpanded)
         {
-            DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
+            if (!isGameRunning && (DutyGameOfflineState == null || DutyGameOfflineState.Visibility != Visibility.Visible))
+            {
+                _ = CheckAndRefreshDutyAsync(showLoading: false);
+            }
+            else if (isGameRunning && DutyGameOfflineState != null && DutyGameOfflineState.Visibility == Visibility.Visible)
+            {
+                _ = CheckAndRefreshDutyAsync(showLoading: true);
+            }
         }
     }
 
@@ -515,15 +524,8 @@ public partial class TabletOverlayWindow : Window
         Focus();
         if (_isSidebarExpanded && LockscreenGrid != null && LockscreenGrid.Visibility != Visibility.Visible)
         {
-            if (!GameProcessHelper.IsGameRunning())
-            {
-                DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
-            }
-            else
-            {
-                StartDutyAutoRefresh();
-                _ = RefreshOnDutyDataAsync(showLoading: false);
-            }
+            StartDutyAutoRefresh();
+            _ = CheckAndRefreshDutyAsync(showLoading: false);
         }
         if (_settings.TabletPlaySounds)
         {
@@ -1284,15 +1286,8 @@ public partial class TabletOverlayWindow : Window
         LockscreenGrid.Visibility = Visibility.Collapsed;
         if (DutySidebarBorder != null && DutySidebarBorder.Visibility == Visibility.Visible)
         {
-            if (!GameProcessHelper.IsGameRunning())
-            {
-                DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
-            }
-            else
-            {
-                StartDutyAutoRefresh();
-                _ = RefreshOnDutyDataAsync(showLoading: false);
-            }
+            StartDutyAutoRefresh();
+            _ = CheckAndRefreshDutyAsync(showLoading: false);
         }
     }
 
@@ -1441,6 +1436,69 @@ public partial class TabletOverlayWindow : Window
         DutySidebarToggle_Click(sender, e);
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    private void CenterWindowOnCurrentMonitor()
+    {
+        try
+        {
+            var helper = new WindowInteropHelper(this);
+            if (helper.Handle != IntPtr.Zero)
+            {
+                IntPtr hMonitor = MonitorFromWindow(helper.Handle, MONITOR_DEFAULTTONEAREST);
+                if (hMonitor != IntPtr.Zero)
+                {
+                    var mi = new MONITORINFO();
+                    mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+                    if (GetMonitorInfo(hMonitor, ref mi))
+                    {
+                        var source = PresentationSource.FromVisual(this);
+                        double dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+                        double dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
+                        double workLeft = mi.rcWork.Left / dpiX;
+                        double workTop = mi.rcWork.Top / dpiY;
+                        double workWidth = (mi.rcWork.Right - mi.rcWork.Left) / dpiX;
+                        double workHeight = (mi.rcWork.Bottom - mi.rcWork.Top) / dpiY;
+
+                        Left = workLeft + (workWidth - Width) / 2.0;
+                        Top = workTop + (workHeight - Height) / 2.0;
+                        return;
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // Fallback using SystemParameters.WorkArea
+        Left = (SystemParameters.WorkArea.Width - Width) / 2.0;
+        Top = (SystemParameters.WorkArea.Height - Height) / 2.0;
+    }
+
     private void DutySidebarCollapseBtn_Click(object sender, RoutedEventArgs e)
     {
         if (!_isSidebarExpanded) return;
@@ -1451,7 +1509,7 @@ public partial class TabletOverlayWindow : Window
             DutySidebarBorder.Visibility = Visibility.Collapsed;
             DutySidebarCol.Width = new GridLength(0);
             Width = Math.Max(1200, Width - DutySidebarTotalWidth);
-            Left += DutySidebarTotalWidth;
+            CenterWindowOnCurrentMonitor();
             if (DutyExpandTabBtn != null) DutyExpandTabBtn.Visibility = Visibility.Visible;
             StopDutyAutoRefresh();
         }
@@ -1460,40 +1518,18 @@ public partial class TabletOverlayWindow : Window
     private void DutySidebarExpandBtn_Click(object sender, RoutedEventArgs e)
     {
         if (_isSidebarExpanded) return;
-
-        if (!GameProcessHelper.IsGameRunning(bypassCache: true))
-        {
-            MessageBox.Show(
-                "Dispeceratul 'Medici la Datorie' este disponibil doar atunci când jocul (GTA V / RAGE:MP) este pornit.",
-                "Dispecerat On-Duty",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-
         _isSidebarExpanded = true;
 
         if (DutySidebarBorder != null && DutySidebarCol != null)
         {
-            double minLeft = SystemParameters.VirtualScreenLeft;
-            double currentLeft = Left;
-            double targetLeft = currentLeft - DutySidebarTotalWidth;
-            if (targetLeft < minLeft)
-            {
-                targetLeft = minLeft;
-            }
-
-            Left = targetLeft;
             Width += DutySidebarTotalWidth;
             DutySidebarCol.Width = new GridLength(DutySidebarTotalWidth);
             DutySidebarBorder.Visibility = Visibility.Visible;
+            CenterWindowOnCurrentMonitor();
             if (DutyExpandTabBtn != null) DutyExpandTabBtn.Visibility = Visibility.Collapsed;
 
             StartDutyAutoRefresh();
-            if (_currentDutyResult == null || (DateTime.Now - _currentDutyResult.LastUpdated).TotalSeconds > 30)
-            {
-                _ = RefreshOnDutyDataAsync(showLoading: _currentDutyResult == null);
-            }
+            _ = CheckAndRefreshDutyAsync(showLoading: _currentDutyResult == null);
         }
     }
 
@@ -1514,7 +1550,7 @@ public partial class TabletOverlayWindow : Window
         if (DutyRefreshBtn != null) DutyRefreshBtn.IsEnabled = false;
         try
         {
-            await RefreshOnDutyDataAsync(showLoading: true);
+            await CheckAndRefreshDutyAsync(showLoading: true);
         }
         finally
         {
@@ -1534,12 +1570,7 @@ public partial class TabletOverlayWindow : Window
             {
                 if (Visibility == Visibility.Visible && DutySidebarBorder != null && DutySidebarBorder.Visibility == Visibility.Visible && LockscreenGrid != null && LockscreenGrid.Visibility != Visibility.Visible)
                 {
-                    if (!GameProcessHelper.IsGameRunning())
-                    {
-                        DutySidebarCollapseBtn_Click(this, new RoutedEventArgs());
-                        return;
-                    }
-                    await RefreshOnDutyDataAsync(showLoading: false);
+                    await CheckAndRefreshDutyAsync(showLoading: false);
                 }
             };
         }
@@ -1551,8 +1582,40 @@ public partial class TabletOverlayWindow : Window
         _onDutyRefreshTimer?.Stop();
     }
 
+    private async Task CheckAndRefreshDutyAsync(bool showLoading = true)
+    {
+        if (!GameProcessHelper.IsGameRunning())
+        {
+            if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
+            if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Collapsed;
+            if (DutyEmptyState != null) DutyEmptyState.Visibility = Visibility.Collapsed;
+            if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Visible;
+            if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
+            if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Inactiv)";
+            if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat · Dispecerat inactiv";
+            return;
+        }
+
+        if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Collapsed;
+        await RefreshOnDutyDataAsync(showLoading);
+    }
+
     private async Task RefreshOnDutyDataAsync(bool showLoading = true)
     {
+        if (!GameProcessHelper.IsGameRunning())
+        {
+            if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
+            if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Collapsed;
+            if (DutyEmptyState != null) DutyEmptyState.Visibility = Visibility.Collapsed;
+            if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Visible;
+            if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
+            if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Inactiv)";
+            if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat · Dispecerat inactiv";
+            return;
+        }
+
+        if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Collapsed;
+
         if (showLoading && _currentDutyResult == null && DutyLoadingIndicator != null)
         {
             DutyLoadingIndicator.Visibility = Visibility.Visible;
