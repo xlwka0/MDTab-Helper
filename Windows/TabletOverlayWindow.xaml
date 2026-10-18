@@ -426,10 +426,11 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.5.4" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.5.5" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
+                                    <Button x:Name="TitleBarHomeBtn" Content="🏠 Acasă" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Height="26" Padding="8,2" FontSize="11" FontWeight="Bold" Margin="10,0,0,0" Cursor="Hand" Click="HomeBtn_Click" Visibility="Collapsed" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Center Lock Button -->
@@ -461,10 +462,10 @@
 
                                 <!-- Column 0: Browser Nav Buttons -->
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,10,0">
-                                    <Button x:Name="BackBtn" Content="◀" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Margin="0,0,4,0" Click="BackBtn_Click"/>
-                                    <Button x:Name="ForwardBtn" Content="▶" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Margin="0,0,4,0" Click="ForwardBtn_Click"/>
-                                    <Button x:Name="ReloadBtn" Content="⟳" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Margin="0,0,4,0" Click="ReloadBtn_Click"/>
-                                    <Button x:Name="HomeBtn" Content="🏠" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Click="HomeBtn_Click"/>
+                                    <Button x:Name="BackBtn" Content="◀" ToolTip="Înapoi (sau Acasă)" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Padding="0" Margin="0,0,4,0" Click="BackBtn_Click"/>
+                                    <Button x:Name="ForwardBtn" Content="▶" ToolTip="Înainte" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Padding="0" Margin="0,0,4,0" Click="ForwardBtn_Click"/>
+                                    <Button x:Name="ReloadBtn" Content="⟳" ToolTip="Reîncarcă" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Padding="0" Margin="0,0,4,0" Click="ReloadBtn_Click"/>
+                                    <Button x:Name="HomeBtn" Content="🏠" ToolTip="Acasă (Desktop)" Width="32" Height="32" Style="{StaticResource TabletBtnStyle}" Padding="0" FontSize="15" FontFamily="Segoe UI Emoji, Segoe UI Symbol, Segoe UI" Click="HomeBtn_Click"/>
                                 </StackPanel>
 
                                 <!-- Column 1: URL input -->
@@ -694,11 +695,13 @@
                                 <!-- Header Area inside Overlays Tab -->
                                 <Grid Grid.Row="0" Margin="20,20,20,10">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Overlays Controller" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Grid.Column="0" Content="← Înapoi" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Padding="10,4" Margin="0,0,14,0" Click="HomeBtn_Click" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Overlays Controller" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
                                         <Button x:Name="TabletAddImageBtn" Content="➕ Adaugă Imagine" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletAddImageBtn_Click" Margin="0,0,8,0"/>
                                         <Button x:Name="TabletToggleOverlaysBtn" Content="👁️ Afișează / Ascunde Overlays" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletToggleOverlaysBtn_Click"/>
                                     </StackPanel>
@@ -821,11 +824,13 @@
                                 <!-- Header Area -->
                                 <Grid Grid.Row="0" Margin="20,20,20,10">
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Keybinds Manager" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Grid.Column="0" Content="← Înapoi" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Padding="10,4" Margin="0,0,14,0" Click="HomeBtn_Click" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Keybinds Manager" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                         <CheckBox x:Name="TabletGlobalKeybindsEnabledCheckBox" Content="Global Enabled" Foreground="#ccc" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Checked="TabletGlobalKeybinds_Checked" Unchecked="TabletGlobalKeybinds_Unchecked"/>
                                         <CheckBox x:Name="TabletGlobalSoundsEnabledCheckBox" Content="Enable Sounds" Foreground="#ccc" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Checked="TabletGlobalSounds_Checked" Unchecked="TabletGlobalSounds_Unchecked"/>
                                         <Button x:Name="TabletAddKeybindBtn" Content="➕ Adaugă Keybind" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletAddKeybindBtn_Click"/>
@@ -968,7 +973,12 @@
 
                                 <!-- Header Area -->
                                 <Grid Grid.Row="0" Margin="20,20,20,10">
-                                    <TextBlock Text="System &amp; Display Settings" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Content="← Înapoi" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Padding="10,4" Margin="0,0,14,0" Click="HomeBtn_Click" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="System &amp; Display Settings" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
                                 </Grid>
 
                                 <!-- Content Scroll Panel -->

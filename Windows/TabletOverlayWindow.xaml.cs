@@ -242,7 +242,7 @@ public partial class TabletOverlayWindow : Window
     {
         if (_isInitialized && TabletWebView.CoreWebView2 != null)
         {
-            BackBtn.IsEnabled = TabletWebView.CoreWebView2.CanGoBack;
+            BackBtn.IsEnabled = true;
             ForwardBtn.IsEnabled = TabletWebView.CoreWebView2.CanGoForward;
         }
     }
@@ -538,6 +538,10 @@ public partial class TabletOverlayWindow : Window
         if (_isInitialized && TabletWebView?.CoreWebView2 != null && TabletWebView.CoreWebView2.CanGoBack)
         {
             TabletWebView.GoBack();
+        }
+        else
+        {
+            CloseAllAppsAndGoHome();
         }
     }
 
@@ -1319,6 +1323,7 @@ public partial class TabletOverlayWindow : Window
 
         appGrid.Visibility = Visibility.Visible;
         NavToolbarBorder.Visibility = showBrowserToolbar ? Visibility.Visible : Visibility.Collapsed;
+        TitleBarHomeBtn.Visibility = Visibility.Visible;
     }
 
     private void CloseAllAppsAndGoHome()
@@ -1328,6 +1333,7 @@ public partial class TabletOverlayWindow : Window
         KeybindsTabContent.Visibility = Visibility.Collapsed;
         SettingsTabContent.Visibility = Visibility.Collapsed;
         NavToolbarBorder.Visibility = Visibility.Collapsed;
+        TitleBarHomeBtn.Visibility = Visibility.Collapsed;
 
         DesktopGrid.Visibility = Visibility.Visible;
     }
@@ -1340,6 +1346,7 @@ public partial class TabletOverlayWindow : Window
 
         _pendingUrl = dest;
         UrlTextBox.Text = dest;
+        BackBtn.IsEnabled = true;
 
         if (!_webViewInitialized)
         {
