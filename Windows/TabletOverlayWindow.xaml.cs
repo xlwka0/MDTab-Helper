@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -93,9 +94,10 @@ public partial class TabletOverlayWindow : Window
         _tabletKeybinds = new ObservableCollection<KeybindViewModel>();
         foreach (var entry in _settings.Entries)
         {
-            _tabletKeybinds.Add(new KeybindViewModel(entry));
+            _tabletKeybinds.Add(CreateKeybindViewModel(entry));
         }
         TabletKeybindsDataGrid.ItemsSource = _tabletKeybinds;
+        TabletKeybindsDataGrid.CellEditEnding += TabletKeybindsDataGrid_CellEditEnding;
 
         // Load keybind delays and state
         TabletGlobalKeybindsEnabledCheckBox.IsChecked = _settings.GlobalEnabled;
@@ -967,6 +969,87 @@ public partial class TabletOverlayWindow : Window
         _refreshKeybindsCallback?.Invoke();
     }
 
+    private KeybindViewModel CreateKeybindViewModel(KeybindEntry entry)
+    {
+        var vm = new KeybindViewModel(entry);
+        vm.PropertyChanged += KeybindViewModel_PropertyChanged;
+        return vm;
+    }
+
+    private void KeybindViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isPopulatingKeybindPanel) return;
+        if (sender is KeybindViewModel vm)
+        {
+            if (e.PropertyName == nameof(KeybindViewModel.Enabled))
+            {
+                if (vm.Enabled && RoleplayComplianceService.HasBlockedLines(vm.Entry.Script, out _, out _))
+                {
+                    vm.Enabled = false;
+                    SoundService.PlayKeybindStop();
+                }
+
+                if (TabletKeybindsDataGrid.SelectedItem == vm)
+                {
+                    _isPopulatingKeybindPanel = true;
+                    try
+                    {
+                        TabletKeybindEnabledCheckBox.IsChecked = vm.Enabled;
+                    }
+                    finally
+                    {
+                        _isPopulatingKeybindPanel = false;
+                    }
+                }
+
+                _saveConfigCallback?.Invoke();
+                _refreshKeybindsCallback?.Invoke();
+            }
+        }
+    }
+
+    private void TabletKeybindsDataGrid_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            _saveConfigCallback?.Invoke();
+            _refreshKeybindsCallback?.Invoke();
+        });
+    }
+
+    private void TabletKeybindGridCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb && cb.DataContext is KeybindViewModel vm)
+        {
+            if (vm.Enabled && RoleplayComplianceService.HasBlockedLines(vm.Entry.Script, out _, out _))
+            {
+                vm.Enabled = false;
+                cb.IsChecked = false;
+                SoundService.PlayKeybindStop();
+            }
+
+            if (TabletKeybindsDataGrid.SelectedItem == vm)
+            {
+                _isPopulatingKeybindPanel = true;
+                try
+                {
+                    TabletKeybindEnabledCheckBox.IsChecked = vm.Enabled;
+                }
+                finally
+                {
+                    _isPopulatingKeybindPanel = false;
+                }
+            }
+            else
+            {
+                TabletKeybindsDataGrid.SelectedItem = vm;
+            }
+
+            _saveConfigCallback?.Invoke();
+            _refreshKeybindsCallback?.Invoke();
+        }
+    }
+
     private void TabletAddKeybindBtn_Click(object sender, RoutedEventArgs e)
     {
         var entry = new KeybindEntry
@@ -976,7 +1059,7 @@ public partial class TabletOverlayWindow : Window
             Script = "/me text"
         };
         _settings.Entries.Add(entry);
-        var vm = new KeybindViewModel(entry);
+        var vm = CreateKeybindViewModel(entry);
         _tabletKeybinds.Add(vm);
         TabletKeybindsDataGrid.SelectedItem = vm;
         _saveConfigCallback?.Invoke();
@@ -1006,6 +1089,7 @@ public partial class TabletOverlayWindow : Window
             TabletKeybindNameTextBox.Text = vm.Name;
             TabletKeybindKeyText.Text = vm.KeyDisplay;
             TabletKeybindScriptTextBox.Text = vm.Entry.Script;
+            ValidateKeybindScriptAndSetUI(vm.Entry.Script, vm);
             TabletKeybindEnabledCheckBox.IsChecked = vm.Enabled;
         }
         finally
@@ -1024,11 +1108,42 @@ public partial class TabletOverlayWindow : Window
             TabletKeybindNameTextBox.Text = string.Empty;
             TabletKeybindKeyText.Text = "None";
             TabletKeybindScriptTextBox.Text = string.Empty;
+            if (TabletKeybindScriptWarningBorder != null) TabletKeybindScriptWarningBorder.Visibility = Visibility.Collapsed;
+            TabletKeybindScriptTextBox.ClearValue(Border.BorderBrushProperty);
+            TabletKeybindEnabledCheckBox.IsEnabled = true;
+            TabletKeybindEnabledCheckBox.ToolTip = null;
             TabletKeybindEnabledCheckBox.IsChecked = false;
         }
         finally
         {
             _isPopulatingKeybindPanel = false;
+        }
+    }
+
+    private void ValidateKeybindScriptAndSetUI(string script, KeybindViewModel? vm)
+    {
+        if (TabletKeybindScriptWarningBorder == null) return;
+
+        if (RoleplayComplianceService.HasBlockedLines(script, out string? blockedLine, out string? matchedPhrase))
+        {
+            TabletKeybindScriptWarningBorder.Visibility = Visibility.Visible;
+            TabletKeybindScriptWarningText.Text = RoleplayComplianceService.GetWarningMessage(blockedLine ?? "", matchedPhrase ?? "");
+            TabletKeybindScriptTextBox.BorderBrush = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+
+            if (vm != null && vm.Enabled)
+            {
+                vm.Enabled = false;
+                TabletKeybindEnabledCheckBox.IsChecked = false;
+            }
+            TabletKeybindEnabledCheckBox.IsEnabled = false;
+            TabletKeybindEnabledCheckBox.ToolTip = "Acest keybind conține comenzi blocate de Regulamentul Serverului (2.27 LER) și nu poate fi activat.";
+        }
+        else
+        {
+            TabletKeybindScriptWarningBorder.Visibility = Visibility.Collapsed;
+            TabletKeybindScriptTextBox.ClearValue(Border.BorderBrushProperty);
+            TabletKeybindEnabledCheckBox.IsEnabled = true;
+            TabletKeybindEnabledCheckBox.ToolTip = null;
         }
     }
 
@@ -1049,6 +1164,7 @@ public partial class TabletOverlayWindow : Window
         if (TabletKeybindsDataGrid.SelectedItem is KeybindViewModel vm)
         {
             vm.Entry.Script = TabletKeybindScriptTextBox.Text;
+            ValidateKeybindScriptAndSetUI(TabletKeybindScriptTextBox.Text, vm);
             vm.Refresh();
             _saveConfigCallback?.Invoke();
             _refreshKeybindsCallback?.Invoke();
@@ -1060,6 +1176,13 @@ public partial class TabletOverlayWindow : Window
         if (_isPopulatingKeybindPanel) return;
         if (TabletKeybindsDataGrid.SelectedItem is KeybindViewModel vm)
         {
+            if (RoleplayComplianceService.HasBlockedLines(vm.Entry.Script, out _, out _))
+            {
+                TabletKeybindEnabledCheckBox.IsChecked = false;
+                SoundService.PlayKeybindStop();
+                return;
+            }
+
             vm.Enabled = true;
             _saveConfigCallback?.Invoke();
             _refreshKeybindsCallback?.Invoke();
@@ -1407,7 +1530,7 @@ public partial class TabletOverlayWindow : Window
 
         appGrid.Visibility = Visibility.Visible;
         NavToolbarBorder.Visibility = showBrowserToolbar ? Visibility.Visible : Visibility.Collapsed;
-        TitleBarHomeBtn.Visibility = Visibility.Visible;
+        TitleBarHomeBtn.Visibility = showBrowserToolbar ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void CloseAllAppsAndGoHome()
@@ -1886,7 +2009,7 @@ public partial class TabletOverlayWindow : Window
         _tabletKeybinds.Clear();
         foreach (var entry in _settings.Entries)
         {
-            _tabletKeybinds.Add(new KeybindViewModel(entry));
+            _tabletKeybinds.Add(CreateKeybindViewModel(entry));
         }
 
         TabletGlobalKeybindsEnabledCheckBox.IsChecked = _settings.GlobalEnabled;

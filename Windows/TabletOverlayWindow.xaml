@@ -888,7 +888,15 @@
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*"/>
                                                 <DataGridTextColumn Header="Tastă Trigger" Binding="{Binding KeyDisplay}" Width="120" IsReadOnly="True"/>
-                                                <DataGridCheckBoxColumn Header="Activat" Binding="{Binding Enabled}" Width="60"/>
+                                                <DataGridTemplateColumn Header="Activat" Width="60">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox IsChecked="{Binding Enabled, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                      Click="TabletKeybindGridCheckBox_Click"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
                                     </Border>
@@ -921,6 +929,17 @@
                                                     <!-- Script / Text -->
                                                     <TextBlock Text="Text / Comandă de trimis" Foreground="#ccc" FontSize="13" FontWeight="Bold" Margin="0,0,0,3"/>
                                                     <TextBox x:Name="TabletKeybindScriptTextBox" Height="60" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletKeybindScriptTextBox_TextChanged" Margin="0,0,0,10"/>
+
+                                                    <!-- LER Compliance Warning Banner (Rule 2.27) -->
+                                                    <Border x:Name="TabletKeybindScriptWarningBorder" Background="#26EF4444" BorderBrush="#EF4444" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10" Visibility="Collapsed">
+                                                        <StackPanel>
+                                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                                                <TextBlock Text="⛔" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                                <TextBlock Text="Regula 2.27 (Low Effort Roleplay)" Foreground="#EF4444" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                            <TextBlock x:Name="TabletKeybindScriptWarningText" Text="Comenzile automate pentru simularea recuperării din accident sunt interzise." Foreground="#FCA5A5" FontSize="11" TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                    </Border>
 
                                                     <!-- Enabled checkbox -->
                                                     <CheckBox x:Name="TabletKeybindEnabledCheckBox" Content="Keybind activat" Foreground="#ccc" FontSize="12" Checked="TabletKeybindEnabledCheckBox_Checked" Unchecked="TabletKeybindEnabledCheckBox_Unchecked" Margin="0,0,0,15"/>

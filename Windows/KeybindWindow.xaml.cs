@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using MDHelper.Models;
+using MDHelper.Services;
 
 namespace MDHelper.Windows;
 
@@ -473,6 +474,16 @@ public class KeybindEditDialog : Window
 
     private void OnSave(object? sender, RoutedEventArgs e)
     {
+        if (RoleplayComplianceService.HasBlockedLines(_scriptBox.Text, out var blockedLine, out var matched))
+        {
+            MessageBox.Show(
+                RoleplayComplianceService.GetWarningMessage(blockedLine ?? "", matched ?? ""),
+                "Regula 2.27 (Low Effort Roleplay)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
         Entry.Name = _nameBox.Text;
         Entry.Script = _scriptBox.Text;
         DialogResult = true;

@@ -70,6 +70,7 @@ public sealed class KeybindOrchestrator : IDisposable
             foreach (var entry in Settings.Entries)
             {
                 if (!entry.Enabled) continue;
+                if (RoleplayComplianceService.HasBlockedLines(entry.Script, out _, out _)) continue;
 
                 var hotkeyId = _nextHotkeyId++;
                 try
@@ -198,6 +199,12 @@ public sealed class KeybindOrchestrator : IDisposable
         }
 
         if (!_entryMap.TryGetValue(hotkeyId, out var entry)) return;
+        if (!entry.Enabled) return;
+        if (RoleplayComplianceService.HasBlockedLines(entry.Script, out _, out _))
+        {
+            SoundService.PlayKeybindStop();
+            return;
+        }
 
         try
         {

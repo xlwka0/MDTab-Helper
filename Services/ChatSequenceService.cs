@@ -32,6 +32,13 @@ public sealed class ChatSequenceService
         {
             _input.ReleaseModifiers();
 
+            if (RoleplayComplianceService.HasBlockedLines(entry.Script, out _, out _))
+            {
+                // Keybind contains blocked lines (Rule 2.27 LER) - refuse to run the keybind at all
+                SoundService.PlayKeybindStop();
+                return;
+            }
+
             var lines = entry.Script
                 .Replace("\r\n", "\n")
                 .Split('\n')
