@@ -1,7 +1,5 @@
 using System;
-using System.IO;
-using System.Media;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
 namespace MDHelper.Services;
 
@@ -9,126 +7,154 @@ public static class SoundService
 {
     public static bool Enabled { get; set; } = true;
 
-    private static void PlayTone(double frequency, int durationMs, double volume = 0.3)
+    private const uint SND_ASYNC = 0x0001;
+    private const uint SND_NODEFAULT = 0x0002;
+    private const uint SND_MEMORY = 0x0004;
+
+    [DllImport("winmm.dll", SetLastError = true)]
+    private static extern bool PlaySound(IntPtr pszSound, IntPtr hmod, uint fdwSound);
+
+    // Permanently pinned WAV buffers in memory for instant, zero-lag native WinMM playback
+    private static readonly IntPtr OverlayShowPtr = CreatePinnedSmoothToneWav(startFreq: 523.25, endFreq: 659.25, durationMs: 135, volume: 0.20);
+    private static readonly IntPtr OverlayHidePtr = CreatePinnedSmoothToneWav(startFreq: 659.25, endFreq: 493.88, durationMs: 135, volume: 0.22);
+    private static readonly IntPtr KeybindStartPtr = CreatePinnedSmoothToneWav(startFreq: 880.00, endFreq: 880.00, durationMs: 45, volume: 0.15);
+    private static readonly IntPtr KeybindFinishPtr = CreatePinnedSmoothToneWav(startFreq: 783.99, endFreq: 1046.50, durationMs: 120, volume: 0.20);
+    private static readonly IntPtr KeybindStopPtr = CreatePinnedSmoothToneWav(startFreq: 240.00, endFreq: 190.00, durationMs: 150, volume: 0.32);
+
+    private static long _lastOverlaySoundTicks = 0;
+
+    /// <summary>
+    /// Synthesizes a single continuous, uninterrupted tone (with optional smooth frequency glide)
+    /// and pins it permanently in memory so winmm.dll PlaySound plays it with zero stutter or cutoffs.
+    /// </summary>
+    private static IntPtr CreatePinnedSmoothToneWav(double startFreq, double endFreq, int durationMs, double volume)
     {
-        if (!Enabled) return;
+        const int sampleRate = 44100;
+        const int warmupMs = 25;   // Silent lead-in wakes up idle audio drivers smoothly
+        const int tailMs = 35;     // Silent tail prevents driver cutoff at the end
 
-        Task.Run(() =>
+        int warmupSamples = sampleRate * warmupMs / 1000;
+        int toneSamples = sampleRate * durationMs / 1000;
+        int tailSamples = sampleRate * tailMs / 1000;
+        int totalSamples = warmupSamples + toneSamples + tailSamples;
+
+        byte[] pcmData = new byte[totalSamples * 2];
+
+        int attackSamples = Math.Max(1, sampleRate * 16 / 1000);
+        int releaseSamples = Math.Max(1, toneSamples - attackSamples);
+
+        double phase = 0.0;
+
+        for (int i = 0; i < toneSamples; i++)
         {
-            try
+            double progress = (double)i / toneSamples;
+
+            // Smooth S-curve frequency transition (no abrupt step or gap in the middle)
+            double smoothStep = progress * progress * (3.0 - 2.0 * progress);
+            double currentFreq = startFreq + (endFreq - startFreq) * smoothStep;
+
+            phase += 2.0 * Math.PI * currentFreq / sampleRate;
+
+            // Warm sine wave + subtle second harmonic
+            double sample = (Math.Sin(phase) + 0.12 * Math.Sin(2.0 * phase)) / 1.12;
+
+            // Continuous bell envelope: smooth raised-cosine attack, smooth natural decay (never dips in the middle)
+            double envelope;
+            if (i < attackSamples)
             {
-                int sampleRate = 44100;
-                int numSamples = sampleRate * durationMs / 1000;
-                byte[] pcmData = new byte[numSamples * 2]; // 16-bit mono
-
-                for (int i = 0; i < numSamples; i++)
-                {
-                    double t = (double)i / sampleRate;
-                    
-                    // Base tone: pure sine wave for warmest sound
-                    double sample = Math.Sin(2 * Math.PI * frequency * t);
-
-                    // Add a tiny second harmonic for richer analog texture
-                    sample = (sample + 0.15 * Math.Sin(4 * Math.PI * frequency * t)) / 1.15;
-
-                    // Envelope: smooth fade-in (15ms) and fade-out (30ms) to prevent clicks
-                    double envelope = 1.0;
-                    int attackSamples = sampleRate * 15 / 1000;
-                    int decaySamples = sampleRate * 30 / 1000;
-
-                    if (i < attackSamples)
-                    {
-                        envelope = (double)i / attackSamples;
-                    }
-                    else if (i > numSamples - decaySamples)
-                    {
-                        envelope = (double)(numSamples - i) / decaySamples;
-                    }
-
-                    short val = (short)(sample * volume * envelope * short.MaxValue);
-                    pcmData[i * 2] = (byte)(val & 0xFF);
-                    pcmData[i * 2 + 1] = (byte)((val >> 8) & 0xFF);
-                }
-
-                // RIFF-WAVE header (44 bytes)
-                byte[] wavHeader = new byte[44];
-                int totalDataLen = pcmData.Length;
-                int totalWriteLen = totalDataLen + 36;
-
-                wavHeader[0] = 0x52; wavHeader[1] = 0x49; wavHeader[2] = 0x46; wavHeader[3] = 0x46; // RIFF
-                wavHeader[4] = (byte)(totalWriteLen & 0xff);
-                wavHeader[5] = (byte)((totalWriteLen >> 8) & 0xff);
-                wavHeader[6] = (byte)((totalWriteLen >> 16) & 0xff);
-                wavHeader[7] = (byte)((totalWriteLen >> 24) & 0xff);
-                wavHeader[8] = 0x57; wavHeader[9] = 0x41; wavHeader[10] = 0x56; wavHeader[11] = 0x45; // WAVE
-                wavHeader[12] = 0x66; wavHeader[13] = 0x6d; wavHeader[14] = 0x74; wavHeader[15] = 0x20; // fmt
-                wavHeader[16] = 16; wavHeader[17] = 0; wavHeader[18] = 0; wavHeader[19] = 0; // Subchunk1Size (16)
-                wavHeader[20] = 1; wavHeader[21] = 0; // AudioFormat = 1 (PCM)
-                wavHeader[22] = 1; wavHeader[23] = 0; // NumChannels = 1 (Mono)
-                wavHeader[24] = (byte)(sampleRate & 0xff);
-                wavHeader[25] = (byte)((sampleRate >> 8) & 0xff);
-                wavHeader[26] = (byte)((sampleRate >> 16) & 0xff);
-                wavHeader[27] = (byte)((sampleRate >> 24) & 0xff);
-                int byteRate = sampleRate * 2;
-                wavHeader[28] = (byte)(byteRate & 0xff);
-                wavHeader[29] = (byte)((byteRate >> 8) & 0xff);
-                wavHeader[30] = (byte)((byteRate >> 16) & 0xff);
-                wavHeader[31] = (byte)((byteRate >> 24) & 0xff);
-                wavHeader[32] = 2; wavHeader[33] = 0; // BlockAlign (2)
-                wavHeader[34] = 16; wavHeader[35] = 0; // BitsPerSample (16)
-                wavHeader[36] = 0x64; wavHeader[37] = 0x61; wavHeader[38] = 0x74; wavHeader[39] = 0x61; // data
-                wavHeader[40] = (byte)(totalDataLen & 0xff);
-                wavHeader[41] = (byte)((totalDataLen >> 8) & 0xff);
-                wavHeader[42] = (byte)((totalDataLen >> 16) & 0xff);
-                wavHeader[43] = (byte)((totalDataLen >> 24) & 0xff);
-
-                byte[] wavBytes = new byte[44 + pcmData.Length];
-                Buffer.BlockCopy(wavHeader, 0, wavBytes, 0, 44);
-                Buffer.BlockCopy(pcmData, 0, wavBytes, 44, pcmData.Length);
-
-                using (var ms = new MemoryStream(wavBytes))
-                using (var player = new SoundPlayer(ms))
-                {
-                    player.PlaySync();
-                }
+                double a = (double)i / attackSamples;
+                envelope = 0.5 * (1.0 - Math.Cos(Math.PI * a));
             }
-            catch
+            else
             {
-                // Ignore audio play errors
+                double r = (double)(i - attackSamples) / releaseSamples;
+                envelope = 0.5 * (1.0 + Math.Cos(Math.PI * r));
             }
-        });
+
+            short val = (short)(Math.Clamp(sample * volume * envelope, -0.98, 0.98) * short.MaxValue);
+            int pcmIdx = (warmupSamples + i) * 2;
+            pcmData[pcmIdx] = (byte)(val & 0xFF);
+            pcmData[pcmIdx + 1] = (byte)((val >> 8) & 0xFF);
+        }
+
+        byte[] wavBytes = new byte[44 + pcmData.Length];
+        int totalDataLen = pcmData.Length;
+        int totalWriteLen = totalDataLen + 36;
+
+        wavBytes[0] = 0x52; wavBytes[1] = 0x49; wavBytes[2] = 0x46; wavBytes[3] = 0x46; // RIFF
+        wavBytes[4] = (byte)(totalWriteLen & 0xff);
+        wavBytes[5] = (byte)((totalWriteLen >> 8) & 0xff);
+        wavBytes[6] = (byte)((totalWriteLen >> 16) & 0xff);
+        wavBytes[7] = (byte)((totalWriteLen >> 24) & 0xff);
+        wavBytes[8] = 0x57; wavBytes[9] = 0x41; wavBytes[10] = 0x56; wavBytes[11] = 0x45; // WAVE
+        wavBytes[12] = 0x66; wavBytes[13] = 0x6d; wavBytes[14] = 0x74; wavBytes[15] = 0x20; // fmt
+        wavBytes[16] = 16; wavBytes[17] = 0; wavBytes[18] = 0; wavBytes[19] = 0; // Subchunk1Size (16)
+        wavBytes[20] = 1; wavBytes[21] = 0; // AudioFormat = 1 (PCM)
+        wavBytes[22] = 1; wavBytes[23] = 0; // NumChannels = 1 (Mono)
+        wavBytes[24] = (byte)(sampleRate & 0xff);
+        wavBytes[25] = (byte)((sampleRate >> 8) & 0xff);
+        wavBytes[26] = (byte)((sampleRate >> 16) & 0xff);
+        wavBytes[27] = (byte)((sampleRate >> 24) & 0xff);
+        int byteRate = sampleRate * 2;
+        wavBytes[28] = (byte)(byteRate & 0xff);
+        wavBytes[29] = (byte)((byteRate >> 8) & 0xff);
+        wavBytes[30] = (byte)((byteRate >> 16) & 0xff);
+        wavBytes[31] = (byte)((byteRate >> 24) & 0xff);
+        wavBytes[32] = 2; wavBytes[33] = 0; // BlockAlign (2)
+        wavBytes[34] = 16; wavBytes[35] = 0; // BitsPerSample (16)
+        wavBytes[36] = 0x64; wavBytes[37] = 0x61; wavBytes[38] = 0x74; wavBytes[39] = 0x61; // data
+        wavBytes[40] = (byte)(totalDataLen & 0xff);
+        wavBytes[41] = (byte)((totalDataLen >> 8) & 0xff);
+        wavBytes[42] = (byte)((totalDataLen >> 16) & 0xff);
+        wavBytes[43] = (byte)((totalDataLen >> 24) & 0xff);
+
+        Buffer.BlockCopy(pcmData, 0, wavBytes, 44, pcmData.Length);
+
+        var handle = GCHandle.Alloc(wavBytes, GCHandleType.Pinned);
+        return handle.AddrOfPinnedObject();
+    }
+
+    private static void PlayNative(IntPtr wavPtr)
+    {
+        if (!Enabled || wavPtr == IntPtr.Zero) return;
+        try
+        {
+            PlaySound(wavPtr, IntPtr.Zero, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+        }
+        catch
+        {
+            // Ignore audio play errors
+        }
     }
 
     public static void PlayOverlayShow()
     {
-        // Gentle rising major third chime
-        PlayTone(523.25, 90, 0.2); // C5
-        Task.Delay(85).ContinueWith(_ => PlayTone(659.25, 140, 0.2)); // E5
+        long now = Environment.TickCount64;
+        if (now - _lastOverlaySoundTicks < 60) return;
+        _lastOverlaySoundTicks = now;
+        PlayNative(OverlayShowPtr);
     }
 
     public static void PlayOverlayHide()
     {
-        // Gentle falling major third chime
-        PlayTone(659.25, 90, 0.25); // E5
-        Task.Delay(85).ContinueWith(_ => PlayTone(523.25, 140, 0.25)); // C5
+        long now = Environment.TickCount64;
+        if (now - _lastOverlaySoundTicks < 60) return;
+        _lastOverlaySoundTicks = now;
+        PlayNative(OverlayHidePtr);
     }
 
     public static void PlayKeybindStart()
     {
-        // Very short soft pop
-        PlayTone(880.00, 40, 0.15); // A5
+        PlayNative(KeybindStartPtr);
     }
 
     public static void PlayKeybindFinish()
     {
-        // Playful double chime
-        PlayTone(783.99, 70, 0.2); // G5
-        Task.Delay(65).ContinueWith(_ => PlayTone(1046.50, 110, 0.2)); // C6
+        PlayNative(KeybindFinishPtr);
     }
 
     public static void PlayKeybindStop()
     {
-        // Deep warm thud
-        PlayTone(220.00, 150, 0.35); // A3
+        PlayNative(KeybindStopPtr);
     }
 }

@@ -1777,6 +1777,25 @@ public partial class TabletOverlayWindow : Window
         _onDutyRefreshTimer?.Stop();
     }
 
+    private void SetBandagesOfflineUi()
+    {
+        if (BandagesActiveContentGrid != null) BandagesActiveContentGrid.Visibility = Visibility.Collapsed;
+        if (BandagesGameOfflineState != null) BandagesGameOfflineState.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateBandagesUi(BandagesStockInfo bandages)
+    {
+        if (BandagesGameOfflineState != null) BandagesGameOfflineState.Visibility = Visibility.Collapsed;
+        if (BandagesActiveContentGrid != null) BandagesActiveContentGrid.Visibility = Visibility.Visible;
+
+        if (!bandages.IsSuccess) return;
+
+        if (BandagesCountText != null)
+        {
+            BandagesCountText.Text = bandages.StockCount;
+        }
+    }
+
     private async Task CheckAndRefreshDutyAsync(bool showLoading = true)
     {
         if (!GameProcessHelper.IsGameRunning())
@@ -1788,6 +1807,7 @@ public partial class TabletOverlayWindow : Window
             if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
             if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Inactiv)";
             if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat · Dispecerat inactiv";
+            SetBandagesOfflineUi();
             return;
         }
 
@@ -1806,10 +1826,13 @@ public partial class TabletOverlayWindow : Window
             if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
             if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Inactiv)";
             if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat · Dispecerat inactiv";
+            SetBandagesOfflineUi();
             return;
         }
 
         if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Collapsed;
+        if (BandagesGameOfflineState != null) BandagesGameOfflineState.Visibility = Visibility.Collapsed;
+        if (BandagesActiveContentGrid != null) BandagesActiveContentGrid.Visibility = Visibility.Visible;
 
         if (showLoading && _currentDutyResult == null && DutyLoadingIndicator != null)
         {
@@ -1820,6 +1843,8 @@ public partial class TabletOverlayWindow : Window
 
         var result = await _onDutyService.FetchOnDutyDataAsync();
         if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
+
+        UpdateBandagesUi(result.Bandages);
 
         if (result.IsSuccess)
         {
@@ -1892,9 +1917,11 @@ public partial class TabletOverlayWindow : Window
 
         foreach (var group in _currentDutyResult.Groups)
         {
-            // Rank filter check (strictly Asistent - Primar)
+            // Rank filter check (Asistent - Director)
             if (filter != "Toți")
             {
+                if ((filter == "Directori" || filter == "Director") && !group.Grad.Contains("Director", StringComparison.OrdinalIgnoreCase)) continue;
+                if ((filter == "Inspectori" || filter == "Medici Inspectori") && !group.Grad.Contains("Inspector", StringComparison.OrdinalIgnoreCase)) continue;
                 if ((filter == "Primari" || filter == "Medici Primari") && !group.Grad.Contains("Primar", StringComparison.OrdinalIgnoreCase)) continue;
                 if ((filter == "Specialiști" || filter == "Medici Specialiști") && !group.Grad.Contains("Speciali", StringComparison.OrdinalIgnoreCase)) continue;
                 if ((filter == "Rezidenți" || filter == "Medici Rezidenți") && !group.Grad.Contains("Reziden", StringComparison.OrdinalIgnoreCase)) continue;

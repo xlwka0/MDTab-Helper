@@ -188,21 +188,80 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- LIVE ON-DUTY SIDEBAR (Pops out to the left of the tablet) -->
+        <!-- LIVE ON-DUTY & BANDAGES SIDEBAR (Pops out to the left of the tablet) -->
         <Border Grid.Column="0" x:Name="DutySidebarBorder" 
                 Visibility="Collapsed" 
                 Width="345" 
                 Margin="0,0,15,0" 
-                Background="#10141D" 
-                BorderBrush="#1EFFFFFF" 
-                BorderThickness="1" 
-                CornerRadius="24"
-                ClipToBounds="True">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="30" Color="Black" Opacity="0.85" ShadowDepth="8"/>
-            </Border.Effect>
-            
+                Background="Transparent" 
+                BorderThickness="0">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- TOP CARD: LIVE BANDAGES STOCK (Above On-Duty) -->
+                <Border Grid.Row="0"
+                        Margin="0,0,0,12"
+                        Background="#10141D"
+                        BorderBrush="#1EFFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="18"
+                        Padding="14,12"
+                        ClipToBounds="True"
+                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="25" Color="Black" Opacity="0.85" ShadowDepth="6"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid x:Name="BandagesActiveContentGrid" Visibility="Visible">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8" Fill="#10B981" VerticalAlignment="Center" Margin="0,0,6,0">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect BlurRadius="6" Color="#10B981" ShadowDepth="0"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+                                <TextBlock Text="BANDAJE DISPONIBILE" Foreground="#00E5FF" FontSize="11" FontWeight="ExtraBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Border Grid.Column="1" CornerRadius="6" Background="#161F30" BorderBrush="#253247" BorderThickness="1" Padding="10,4" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Viewbox Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="M11,21.73 a2,2 0 0 0 2,0 l7,-4 A2,2 0 0 0 21,16 V8 a2,2 0 0 0 -1,-1.73 l-7,-4 a2,2 0 0 0 -2,0 l-7,4 A2,2 0 0 0 3,8 v8 a2,2 0 0 0 1,1.73 z" Stroke="#10B981" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                            <Path Data="M12,22 V12" Stroke="#10B981" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                            <Polyline Points="3.29,7 12,12 20.71,7" Stroke="#10B981" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                            <Path Data="M7.5,4.27 L16.5,9.42" Stroke="#10B981" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock x:Name="BandagesCountText" Text="--" Foreground="White" FontSize="14" FontWeight="ExtraBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel x:Name="BandagesGameOfflineState" Visibility="Collapsed" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="BANDAJE DISPONIBILE · " Foreground="#64748B" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Text="Inactiv" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- BOTTOM CARD: LIVE ON-DUTY DISPATCH -->
+                <Border Grid.Row="1"
+                        Background="#10141D" 
+                        BorderBrush="#1EFFFFFF" 
+                        BorderThickness="1" 
+                        CornerRadius="24"
+                        ClipToBounds="True">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="30" Color="Black" Opacity="0.85" ShadowDepth="8"/>
+                    </Border.Effect>
+                    
+                    <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -368,9 +427,11 @@
                     </Border>
                 </Grid>
 
-                <!-- Sidebar Footer -->
-                <Border Grid.Row="2" Background="#0A0E17" BorderBrush="#1C2436" BorderThickness="0,1,0,0" Padding="10,8">
-                    <TextBlock x:Name="DutyLastUpdatedText" Text="Sincronizat: --:--:--" Foreground="#64748B" FontSize="10" HorizontalAlignment="Center"/>
+                        <!-- Sidebar Footer -->
+                        <Border Grid.Row="2" Background="#0A0E17" BorderBrush="#1C2436" BorderThickness="0,1,0,0" Padding="10,8">
+                            <TextBlock x:Name="DutyLastUpdatedText" Text="Sincronizat: --:--:--" Foreground="#64748B" FontSize="10" HorizontalAlignment="Center"/>
+                        </Border>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
@@ -435,7 +496,7 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.0" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.1" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
