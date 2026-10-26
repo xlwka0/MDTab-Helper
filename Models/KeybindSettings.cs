@@ -1,4 +1,4 @@
-namespace MDHelper.Models;
+﻿namespace MDHelper.Models;
 
 public class KeybindEntry
 {
@@ -73,4 +73,7 @@ public class KeybindSettings
     public int CopilotVirtualKey { get; set; } = 0x57; // default W
     public int CopilotTriggerVirtualKey { get; set; } = 0xBF; // default / (0xBF)
     public uint CopilotTriggerModifiers { get; set; } = 0x0012; // default RightCtrl (0x0010 | 0x0002)
+
+    // MD Panel Cookie Sync Authorization
+    public bool PanelSyncConsentGiven { get; set; } = false;
 }

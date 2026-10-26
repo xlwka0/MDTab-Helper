@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -296,7 +296,8 @@ public partial class KeybindWindow : Window
             CopilotEnabled = Settings.CopilotEnabled,
             CopilotVirtualKey = Settings.CopilotVirtualKey,
             CopilotTriggerVirtualKey = Settings.CopilotTriggerVirtualKey,
-            CopilotTriggerModifiers = Settings.CopilotTriggerModifiers
+            CopilotTriggerModifiers = Settings.CopilotTriggerModifiers,
+            PanelSyncConsentGiven = Settings.PanelSyncConsentGiven
         };
 
         DialogResult = true;

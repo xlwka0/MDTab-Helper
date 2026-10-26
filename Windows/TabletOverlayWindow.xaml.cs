@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -43,6 +43,7 @@ public partial class TabletOverlayWindow : Window
     // On-Duty Medic Dispatch fields
     private readonly OnDutyService _onDutyService = new();
     private DispatcherTimer? _onDutyRefreshTimer;
+    private bool _isRefreshingDuty = false;
     private DispatcherTimer? _dutyToastTimer;
     private OnDutyResult? _currentDutyResult;
     private string _dutySearchText = string.Empty;
@@ -150,6 +151,9 @@ public partial class TabletOverlayWindow : Window
         TabletVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
         SettingsCurrentVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
         _ = CheckForUpdatesSilentlyAsync();
+
+        // Check if user is connected to MD Panel right from tablet start!
+        EnsureWebViewInitialized("https://md.b-zone.ro");
     }
 
     private void ClockTimer_Tick(object? sender, EventArgs e)
@@ -171,26 +175,16 @@ public partial class TabletOverlayWindow : Window
             LockscreenDateText.Text = now.ToString("dddd, d MMMM", culture);
         }
 
-        bool isGameRunning = GameProcessHelper.IsGameRunning();
         if (DutyTitleBarToggleBtn != null)
         {
-            DutyTitleBarToggleBtn.Opacity = isGameRunning ? 1.0 : 0.85;
-            DutyTitleBarToggleBtn.ToolTip = isGameRunning
+            bool hasData = _currentDutyResult != null && _currentDutyResult.IsSuccess;
+            DutyTitleBarToggleBtn.Opacity = hasData ? 1.0 : 0.85;
+            DutyTitleBarToggleBtn.ToolTip = hasData
                 ? "Comută afișarea listei laterale de Medici la Datorie"
-                : "Medici Duty (Inactiv - Neconectat la server)";
+                : "Medici Duty (Necesită conectare pe portal)";
         }
 
-        if (_isSidebarExpanded)
-        {
-            if (!isGameRunning && (DutyGameOfflineState == null || DutyGameOfflineState.Visibility != Visibility.Visible))
-            {
-                _ = CheckAndRefreshDutyAsync(showLoading: false);
-            }
-            else if (isGameRunning && DutyGameOfflineState != null && DutyGameOfflineState.Visibility == Visibility.Visible)
-            {
-                _ = CheckAndRefreshDutyAsync(showLoading: true);
-            }
-        }
+
 
         if (now.Minute % 10 == 0 && now.Second == 0)
         {
@@ -225,6 +219,9 @@ public partial class TabletOverlayWindow : Window
             TabletWebView.CoreWebView2.SourceChanged += CoreWebView2_SourceChanged;
             TabletWebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
 
+            // Check connection and refresh Duty & Bandages as soon as browser engine is ready
+            _ = CheckAndRefreshDutyAsync(showLoading: false);
+
             // Apply default zoom
             TabletWebView.CoreWebView2.Settings.IsZoomControlEnabled = true;
             ApplyZoom();
@@ -255,6 +252,12 @@ public partial class TabletOverlayWindow : Window
     {
         LoadingIndicator.Visibility = Visibility.Collapsed;
         UpdateNavigationButtons();
+
+        // When user navigates or logs into md.b-zone.ro, auto-refresh duty with new session cookies!
+        if (TabletWebView.Source != null && TabletWebView.Source.Host.Contains("b-zone.ro", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = CheckAndRefreshDutyAsync(showLoading: false);
+        }
     }
 
     private void CoreWebView2_SourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
@@ -688,6 +691,8 @@ public partial class TabletOverlayWindow : Window
         {
             _clockTimer.Stop();
             _clockTimer.Tick -= ClockTimer_Tick;
+            StopDutyAutoRefresh();
+            _dutyToastTimer?.Stop();
             base.OnClosing(e);
         }
         else
@@ -1783,6 +1788,50 @@ public partial class TabletOverlayWindow : Window
         if (BandagesGameOfflineState != null) BandagesGameOfflineState.Visibility = Visibility.Visible;
     }
 
+    private async Task<string?> GetPanelCookieHeaderAsync()
+    {
+        try
+        {
+            if (TabletWebView != null)
+            {
+                if (TabletWebView.CoreWebView2 == null)
+                {
+                    string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                    string userFolder = System.IO.Path.Combine(appData, "MDTab-Helper", "TabletCache");
+                    var env = await CoreWebView2Environment.CreateAsync(null, userFolder);
+                    await TabletWebView.EnsureCoreWebView2Async(env);
+                }
+
+                if (TabletWebView.CoreWebView2 != null)
+                {
+                    var cookieManager = TabletWebView.CoreWebView2.CookieManager;
+
+                    // Query cookies matching root (with trailing slash), API endpoint, and full b-zone jar
+                    var rootCookies = await cookieManager.GetCookiesAsync("https://md.b-zone.ro/") ?? new List<CoreWebView2Cookie>();
+                    var apiCookies = await cookieManager.GetCookiesAsync("https://md.b-zone.ro/api/duty/live") ?? new List<CoreWebView2Cookie>();
+                    var allCookies = await cookieManager.GetCookiesAsync("") ?? new List<CoreWebView2Cookie>();
+
+                    var bzoneCookies = rootCookies
+                        .Concat(apiCookies)
+                        .Concat(allCookies.Where(c => c.Domain.Contains("b-zone.ro", StringComparison.OrdinalIgnoreCase)))
+                        .GroupBy(c => c.Name)
+                        .Select(g => g.First())
+                        .ToList();
+
+                    if (bzoneCookies.Count > 0)
+                    {
+                        return string.Join("; ", bzoneCookies.Select(c => $"{c.Name}={c.Value}"));
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // CoreWebView2 not ready
+        }
+        return null;
+    }
+
     private void UpdateBandagesUi(BandagesStockInfo bandages)
     {
         if (BandagesGameOfflineState != null) BandagesGameOfflineState.Visibility = Visibility.Collapsed;
@@ -1793,31 +1842,23 @@ public partial class TabletOverlayWindow : Window
         if (BandagesCountText != null)
         {
             BandagesCountText.Text = bandages.StockCount;
+            BandagesCountText.ToolTip = $"Stoc Disponibil: {bandages.StockCount} buc\nPreț: {bandages.PricePerUnit}\nValoare Totală: {bandages.TotalValue}\nActualizat: {bandages.LastModified}";
         }
     }
 
     private async Task CheckAndRefreshDutyAsync(bool showLoading = true)
     {
-        if (!GameProcessHelper.IsGameRunning())
-        {
-            if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
-            if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Collapsed;
-            if (DutyEmptyState != null) DutyEmptyState.Visibility = Visibility.Collapsed;
-            if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Visible;
-            if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
-            if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Inactiv)";
-            if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat · Dispecerat inactiv";
-            SetBandagesOfflineUi();
-            return;
-        }
-
-        if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Collapsed;
         await RefreshOnDutyDataAsync(showLoading);
     }
 
     private async Task RefreshOnDutyDataAsync(bool showLoading = true)
     {
-        if (!GameProcessHelper.IsGameRunning())
+        if (_isRefreshingDuty) return;
+        _isRefreshingDuty = true;
+        try
+        {
+        // 1. If consent not yet granted, show the activation prompt in the sidebar card
+        if (!_settings.PanelSyncConsentGiven)
         {
             if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
             if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Collapsed;
@@ -1825,8 +1866,52 @@ public partial class TabletOverlayWindow : Window
             if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Visible;
             if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
             if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Inactiv)";
-            if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat · Dispecerat inactiv";
+            if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Sincronizare neactivată";
+            if (DutyOfflineTitleText != null) DutyOfflineTitleText.Text = "Sincronizare Portal MD";
+            if (DutyOfflineDescText != null) DutyOfflineDescText.Text = "Pentru a vedea medicii activi pe tură și stocul de bandaje, este necesară autorizarea sincronizării cu portalul.";
+            if (DutyActivateSyncBtn != null)
+            {
+                DutyActivateSyncBtn.Content = "⚡ Activează Sincronizarea";
+                DutyActivateSyncBtn.Visibility = Visibility.Visible;
+            }
+            if (DutyOfflineSubtext != null) DutyOfflineSubtext.Text = "Apasă pe butonul de mai sus pentru detalii și activare.";
             SetBandagesOfflineUi();
+            if (DutyTitleBarToggleBtn != null)
+            {
+                DutyTitleBarToggleBtn.Content = "⚪ Medici Duty (Inactiv)";
+                DutyTitleBarToggleBtn.Opacity = 0.85;
+                DutyTitleBarToggleBtn.ToolTip = "Medici Duty (Apasă pentru autorizare)";
+            }
+            return;
+        }
+
+        // 2. Consent granted: get panel cookies
+        string? cookieHeader = await GetPanelCookieHeaderAsync();
+
+        if (string.IsNullOrWhiteSpace(cookieHeader))
+        {
+            if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
+            if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Collapsed;
+            if (DutyEmptyState != null) DutyEmptyState.Visibility = Visibility.Collapsed;
+            if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Visible;
+            if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
+            if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Neconectat)";
+            if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Neconectat la portal";
+            if (DutyOfflineTitleText != null) DutyOfflineTitleText.Text = "Neconectat la Portal";
+            if (DutyOfflineDescText != null) DutyOfflineDescText.Text = "Trebuie să fii conectat pe portalul MD în tabletă pentru a vedea personalul de tură.";
+            if (DutyActivateSyncBtn != null)
+            {
+                DutyActivateSyncBtn.Content = "🌐 Deschide Portalul MD";
+                DutyActivateSyncBtn.Visibility = Visibility.Visible;
+            }
+            if (DutyOfflineSubtext != null) DutyOfflineSubtext.Text = "Autentifică-te pe md.b-zone.ro în browserul tabletei.";
+            SetBandagesOfflineUi();
+            if (DutyTitleBarToggleBtn != null)
+            {
+                DutyTitleBarToggleBtn.Content = "⚪ Medici Duty (Neconectat)";
+                DutyTitleBarToggleBtn.Opacity = 0.85;
+                DutyTitleBarToggleBtn.ToolTip = "Medici Duty (Necesită conectare pe portal)";
+            }
             return;
         }
 
@@ -1841,7 +1926,7 @@ public partial class TabletOverlayWindow : Window
 
         if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Collapsed;
 
-        var result = await _onDutyService.FetchOnDutyDataAsync();
+        var result = await _onDutyService.FetchOnDutyDataAsync(cookieHeader);
         if (DutyLoadingIndicator != null) DutyLoadingIndicator.Visibility = Visibility.Collapsed;
 
         UpdateBandagesUi(result.Bandages);
@@ -1851,13 +1936,40 @@ public partial class TabletOverlayWindow : Window
             _currentDutyResult = result;
             if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = $"Sincronizat: {result.LastUpdated:HH:mm:ss}";
             if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = $"({result.TotalCount})";
-            if (DutyTitleBarToggleBtn != null) DutyTitleBarToggleBtn.Content = $"🟢 {result.TotalCount} Medici Duty";
+            if (DutyTitleBarToggleBtn != null)
+            {
+                DutyTitleBarToggleBtn.Content = $"🟢 {result.TotalCount} Medici Duty";
+                DutyTitleBarToggleBtn.Opacity = 1.0;
+                DutyTitleBarToggleBtn.ToolTip = "Comută afișarea listei laterale de Medici la Datorie";
+            }
 
             ApplyDutyFilterAndSearch();
         }
         else
         {
-            if (_currentDutyResult == null)
+            if (result.IsUnauthorized)
+            {
+                if (DutyGameOfflineState != null) DutyGameOfflineState.Visibility = Visibility.Visible;
+                if (DutyGroupsItemsControl != null) DutyGroupsItemsControl.ItemsSource = null;
+                if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = "(Neconectat)";
+                if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = "Sesiune expirată";
+                if (DutyOfflineTitleText != null) DutyOfflineTitleText.Text = "Sesiune Expirată";
+                if (DutyOfflineDescText != null) DutyOfflineDescText.Text = "Sesiunea ta pe portal a expirat. Te rugăm să te reconectezi.";
+                if (DutyActivateSyncBtn != null)
+                {
+                    DutyActivateSyncBtn.Content = "🌐 Reconectare Portal MD";
+                    DutyActivateSyncBtn.Visibility = Visibility.Visible;
+                }
+                if (DutyOfflineSubtext != null) DutyOfflineSubtext.Text = "Apasă pe butonul de mai sus pentru a deschide pagina de login.";
+                SetBandagesOfflineUi();
+                if (DutyTitleBarToggleBtn != null)
+                {
+                    DutyTitleBarToggleBtn.Content = "⚪ Medici Duty (Neconectat)";
+                    DutyTitleBarToggleBtn.Opacity = 0.85;
+                    DutyTitleBarToggleBtn.ToolTip = "Medici Duty (Necesită conectare pe portal)";
+                }
+            }
+            else if (_currentDutyResult == null)
             {
                 if (DutyErrorMessageText != null) DutyErrorMessageText.Text = result.ErrorMessage ?? "Eroare necunoscută la preluarea datelor.";
                 if (DutyErrorState != null) DutyErrorState.Visibility = Visibility.Visible;
@@ -1868,6 +1980,64 @@ public partial class TabletOverlayWindow : Window
                 if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = $"Eroare actualizare: {DateTime.Now:HH:mm:ss}";
             }
         }
+        }
+        finally
+        {
+            _isRefreshingDuty = false;
+        }
+    }
+
+    private void DutyActivateSyncBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.PanelSyncConsentGiven)
+        {
+            ShowPanelSyncConsentModal();
+        }
+        else
+        {
+            OpenApp(WebTabContent, true);
+            EnsureWebViewInitialized("https://md.b-zone.ro");
+            _ = CheckAndRefreshDutyAsync(showLoading: true);
+        }
+    }
+
+    private void ShowPanelSyncConsentModal()
+    {
+        if (PanelSyncConsentModalGrid == null) return;
+
+        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible && TabletWebView != null && TabletWebView.Visibility == Visibility.Visible)
+        {
+            _wasWebViewVisibleBeforeModal = true;
+            TabletWebView.Visibility = Visibility.Hidden;
+        }
+
+        PanelSyncConsentModalGrid.Visibility = Visibility.Visible;
+    }
+
+    private void HidePanelSyncConsentModal()
+    {
+        if (PanelSyncConsentModalGrid == null) return;
+        PanelSyncConsentModalGrid.Visibility = Visibility.Collapsed;
+
+        if (_wasWebViewVisibleBeforeModal)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeModal = false;
+        }
+    }
+
+    private void PanelSyncConsentCancel_Click(object sender, RoutedEventArgs e)
+    {
+        HidePanelSyncConsentModal();
+    }
+
+    private async void PanelSyncConsentConfirm_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.PanelSyncConsentGiven = true;
+        _saveConfigCallback?.Invoke();
+        HidePanelSyncConsentModal();
+
+        await CheckAndRefreshDutyAsync(showLoading: true);
     }
 
     private void DutySearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -1962,6 +2132,22 @@ public partial class TabletOverlayWindow : Window
             else
             {
                 DutyEmptyState.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void DutyDoctorRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement elem && elem.Tag is OnDutyDoctor doc)
+        {
+            try
+            {
+                Clipboard.SetText(doc.Nume);
+                ShowDutyCopyToast($"Copiat: {doc.Nume}");
+            }
+            catch
+            {
+                // Clipboard may be temporarily locked by another process
             }
         }
     }
@@ -2108,6 +2294,18 @@ public partial class TabletOverlayWindow : Window
         dest.CopilotVirtualKey = source.CopilotVirtualKey;
         dest.CopilotTriggerVirtualKey = source.CopilotTriggerVirtualKey;
         dest.CopilotTriggerModifiers = source.CopilotTriggerModifiers;
+
+        dest.TabletEnabled = source.TabletEnabled;
+        dest.TabletUrl = source.TabletUrl;
+        dest.TabletVirtualKey = source.TabletVirtualKey;
+        dest.TabletModifiers = source.TabletModifiers;
+        dest.TabletOpacity = source.TabletOpacity;
+        dest.TabletTheme = source.TabletTheme;
+        dest.TabletPlaySounds = source.TabletPlaySounds;
+        dest.TabletZoom = source.TabletZoom;
+        dest.TabletWidth = source.TabletWidth;
+        dest.TabletHeight = source.TabletHeight;
+        dest.PanelSyncConsentGiven = source.PanelSyncConsentGiven;
 
         dest.Entries.Clear();
         foreach (var entry in source.Entries)

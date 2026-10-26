@@ -245,7 +245,7 @@
 
                         <StackPanel x:Name="BandagesGameOfflineState" Visibility="Collapsed" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock Text="BANDAJE DISPONIBILE · " Foreground="#64748B" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
-                            <TextBlock Text="Inactiv" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="Neconectat" Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -319,12 +319,25 @@
 
                 <!-- Sidebar Body: Doctors List or States -->
                 <Grid Grid.Row="1">
-                    <!-- Game Offline / Inactive State -->
+                    <!-- Portal Offline / Disconnected State -->
                     <Border x:Name="DutyGameOfflineState" Background="#0C101A" Panel.ZIndex="12" Visibility="Collapsed" Padding="20,24">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="Inactiv" Foreground="#F1F5F9" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                            <TextBlock Text="Nu poți vedea persoanele pe tură în acest moment" Foreground="#CBD5E1" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="290" Margin="0,0,0,10"/>
-                            <TextBlock Text="Acesta devine activ automat atunci când jocul este pornit" Foreground="#64748B" FontSize="12" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="290"/>
+                            <Border Width="46" Height="46" CornerRadius="23" Background="#162235" BorderBrush="#00E5FF" BorderThickness="1" Margin="0,0,0,12" HorizontalAlignment="Center">
+                                <TextBlock Text="⚡" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock x:Name="DutyOfflineTitleText" Text="Sincronizare Portal MD" Foreground="#F1F5F9" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock x:Name="DutyOfflineDescText" Text="Pentru a vedea medicii activi pe tură și stocul de bandaje, este necesară autorizarea sincronizării cu portalul." Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="290" Margin="0,0,0,14"/>
+
+                            <!-- Activation / Action Button -->
+                            <Button x:Name="DutyActivateSyncBtn" Content="⚡ Activează Sincronizarea" Background="#00E5FF" Foreground="#0A0E17" FontWeight="Bold" FontSize="12" Padding="18,7" BorderThickness="0" Cursor="Hand" Click="DutyActivateSyncBtn_Click" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                    </Style>
+                                </Button.Resources>
+                            </Button>
+
+                            <TextBlock x:Name="DutyOfflineSubtext" Text="Apasă pe butonul de mai sus pentru detalii și activare." Foreground="#64748B" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="280"/>
                         </StackPanel>
                     </Border>
 
@@ -356,7 +369,7 @@
                     </Border>
 
                     <!-- Scrollable Duty Doctors List -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="10,10,8,12">
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Padding="12,10,12,12">
                         <ItemsControl x:Name="DutyGroupsItemsControl">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -377,6 +390,8 @@
                                                             BorderThickness="0,0,0,1" 
                                                             Padding="4,6" 
                                                             CornerRadius="4" 
+                                                            Cursor="Hand"
+                                                            MouseLeftButtonUp="DutyDoctorRow_MouseLeftButtonUp"
                                                             Tag="{Binding}">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
@@ -496,7 +511,7 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.1" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.2" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
@@ -1253,7 +1268,7 @@
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock Text="🚀 Versiune &amp; Actualizări:" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                                     <Border CornerRadius="4" Background="#1A00E5FF" Padding="6,2" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.5.0" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
+                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.2" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
                                                     </Border>
                                                     <TextBlock x:Name="SettingsUpdateStatusText" Text="Verificare actualizări la pornire..." Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
                                                 </StackPanel>
@@ -1284,6 +1299,70 @@
                                     </StackPanel>
                                 </ScrollViewer>
                             </Grid>
+                        </Grid>
+
+                        <!-- Cookie Consent / Panel Sync Authorization Modal -->
+                        <Grid x:Name="PanelSyncConsentModalGrid" Grid.RowSpan="4" Panel.ZIndex="160" Visibility="Collapsed">
+                            <!-- Dimmed background overlay -->
+                            <Border Background="#E0070B14" MouseLeftButtonDown="PanelSyncConsentCancel_Click"/>
+
+                            <!-- Modal Card -->
+                            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Width="500" Background="#111622" BorderBrush="#00E5FF" BorderThickness="1" CornerRadius="18" Padding="24" ClipToBounds="True">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="40" Color="Black" Opacity="0.9" ShadowDepth="10"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <!-- Header with Shield Icon -->
+                                    <Grid Margin="0,0,0,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="42" Height="42" CornerRadius="10" Background="#16253B" BorderBrush="#00E5FF" BorderThickness="1" Margin="0,0,14,0" VerticalAlignment="Center">
+                                            <TextBlock Text="🛡️" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="Autorizare Sincronizare Portal" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                            <TextBlock Text="Acces securizat la datele tale de medic" Foreground="#00E5FF" FontSize="12" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="✕" Width="28" Height="28" Background="#182030" Foreground="#94A3B8" BorderThickness="0" Cursor="Hand" Click="PanelSyncConsentCancel_Click" VerticalAlignment="Top"/>
+                                    </Grid>
+
+                                    <!-- Explanation Box -->
+                                    <Border Background="#090D15" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <TextBlock Text="Cum funcționează sincronizarea?" Foreground="#F1F5F9" FontSize="12.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Text="Aplicația va citi sesiunea ta de conectare de pe portalul md.b-zone.ro (cookie-ul de autentificare) pentru a interoga direct și în timp real serverul Departamentului Medical." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Ce date sunt sincronizate:" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                            <TextBlock Text="• Colegii activi la datorie și gradul lor (pentru lista din panou)&#x0a;• Stocul de bandaje disponibile în depozitul facțiunii" Foreground="#38BDF8" FontSize="11" TextWrapping="Wrap" LineHeight="16" Margin="0,0,0,10"/>
+
+                                            <Border Background="#0D1F18" BorderBrush="#10B981" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                                                <TextBlock Text="🔒 Confidențialitate 100%: Datele rămân exclusiv locale pe calculatorul tău. Nu colectăm parole, nu modificăm contul tău și nu trimitem date pe servere externe." Foreground="#34D399" FontSize="10.5" TextWrapping="Wrap" LineHeight="15"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Action Buttons -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Button Grid.Column="1" Content="Anulează" Style="{StaticResource TabletBtnStyle}" Height="34" Padding="16,0" FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0" Click="PanelSyncConsentCancel_Click"/>
+                                        <Button Grid.Column="2" x:Name="PanelSyncConsentConfirmBtn" Content="✓ Activează Sincronizarea" Background="#00E5FF" Foreground="#0A0E17" Height="34" Padding="18,0" FontSize="12" FontWeight="Bold" Cursor="Hand" BorderThickness="0" Click="PanelSyncConsentConfirm_Click">
+                                            <Button.Resources>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="8"/>
+                                                </Style>
+                                            </Button.Resources>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </Grid>
 
                         <!-- Update Dialog Modal (Appears over tablet screen when update badge or button is clicked) -->
