@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using Microsoft.Web.WebView2.Core;
 using MDHelper.Models;
 using MDHelper.Services;
@@ -43,6 +44,7 @@ public partial class TabletOverlayWindow : Window
     // On-Duty Medic Dispatch fields
     private readonly OnDutyService _onDutyService = new();
     private DispatcherTimer? _onDutyRefreshTimer;
+    private DispatcherTimer? _keepAliveTimer;
     private bool _isRefreshingDuty = false;
     private DispatcherTimer? _dutyToastTimer;
     private OnDutyResult? _currentDutyResult;
@@ -152,6 +154,15 @@ public partial class TabletOverlayWindow : Window
         SettingsCurrentVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
         _ = CheckForUpdatesSilentlyAsync();
 
+        _onDutyService.OnCookiesReceivedAsync = HandleSetCookiesFromApiAsync;
+
+        _keepAliveTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(50)
+        };
+        _keepAliveTimer.Tick += KeepAliveTimer_Tick;
+        _keepAliveTimer.Start();
+
         // Check if user is connected to MD Panel right from tablet start!
         EnsureWebViewInitialized("https://md.b-zone.ro");
     }
@@ -207,8 +218,28 @@ public partial class TabletOverlayWindow : Window
             string userFolder = Path.Combine(appData, "MDTab-Helper", "TabletCache");
             Directory.CreateDirectory(userFolder);
 
-            var env = await CoreWebView2Environment.CreateAsync(null, userFolder);
+            var envOptions = new CoreWebView2EnvironmentOptions
+            {
+                AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+            };
+            var env = await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
             await TabletWebView.EnsureCoreWebView2Async(env);
+
+            try
+            {
+                await TabletWebView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+                    try {
+                        Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
+                        Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+                    } catch(e) {}
+                ");
+            }
+            catch {}
+
+            if (!string.IsNullOrWhiteSpace(TabletWebView.CoreWebView2.Settings.UserAgent))
+            {
+                _onDutyService.UpdateUserAgent(TabletWebView.CoreWebView2.Settings.UserAgent);
+            }
 
             _webViewInitialized = true;
             LoadingIndicator.Visibility = Visibility.Collapsed;
@@ -693,6 +724,7 @@ public partial class TabletOverlayWindow : Window
             _clockTimer.Tick -= ClockTimer_Tick;
             StopDutyAutoRefresh();
             _dutyToastTimer?.Stop();
+            _keepAliveTimer?.Stop();
             base.OnClosing(e);
         }
         else
@@ -1782,10 +1814,95 @@ public partial class TabletOverlayWindow : Window
         _onDutyRefreshTimer?.Stop();
     }
 
+    private void UpdateDutyTitleBarButton(string text, string colorHex, double opacity, string tooltip)
+    {
+        if (DutyTitleBarToggleText != null)
+        {
+            DutyTitleBarToggleText.Text = text;
+        }
+        if (DutyTitleBarStatusDot != null)
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(colorHex);
+                DutyTitleBarStatusDot.Fill = new SolidColorBrush(color);
+                if (DutyTitleBarStatusDot.Effect is DropShadowEffect dropShadow)
+                {
+                    dropShadow.Color = color;
+                }
+            }
+            catch {}
+        }
+        if (DutyTitleBarToggleBtn != null)
+        {
+            DutyTitleBarToggleBtn.Opacity = opacity;
+            DutyTitleBarToggleBtn.ToolTip = tooltip;
+        }
+    }
+
     private void SetBandagesOfflineUi()
     {
         if (BandagesActiveContentGrid != null) BandagesActiveContentGrid.Visibility = Visibility.Collapsed;
         if (BandagesGameOfflineState != null) BandagesGameOfflineState.Visibility = Visibility.Visible;
+    }
+
+    private async void KeepAliveTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_settings.PanelSyncConsentGiven) return;
+        try
+        {
+            string? cookieHeader = await GetPanelCookieHeaderAsync();
+            if (!string.IsNullOrWhiteSpace(cookieHeader))
+            {
+                await _onDutyService.SendKeepAlivePingAsync(cookieHeader);
+            }
+        }
+        catch
+        {
+            // Ignore background keepalive errors
+        }
+    }
+
+    private Task HandleSetCookiesFromApiAsync(IEnumerable<string> setCookies)
+    {
+        try
+        {
+            if (TabletWebView?.CoreWebView2 == null) return Task.CompletedTask;
+
+            Dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    if (TabletWebView?.CoreWebView2 == null) return;
+                    var cookieManager = TabletWebView.CoreWebView2.CookieManager;
+
+                    foreach (var cookieHeader in setCookies)
+                    {
+                        var parts = cookieHeader.Split(';');
+                        if (parts.Length == 0) continue;
+                        var kv = parts[0].Split('=', 2);
+                        if (kv.Length != 2) continue;
+                        string name = kv[0].Trim();
+                        string value = kv[1].Trim();
+                        string domain = ".b-zone.ro";
+                        string path = "/";
+
+                        for (int i = 1; i < parts.Length; i++)
+                        {
+                            var p = parts[i].Trim();
+                            if (p.StartsWith("Domain=", StringComparison.OrdinalIgnoreCase)) domain = p.Substring(7).Trim();
+                            else if (p.StartsWith("Path=", StringComparison.OrdinalIgnoreCase)) path = p.Substring(5).Trim();
+                        }
+
+                        var cookie = cookieManager.CreateCookie(name, value, domain, path);
+                        cookieManager.AddOrUpdateCookie(cookie);
+                    }
+                }
+                catch {}
+            });
+        }
+        catch {}
+        return Task.CompletedTask;
     }
 
     private async Task<string?> GetPanelCookieHeaderAsync()
@@ -1798,7 +1915,11 @@ public partial class TabletOverlayWindow : Window
                 {
                     string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                     string userFolder = System.IO.Path.Combine(appData, "MDTab-Helper", "TabletCache");
-                    var env = await CoreWebView2Environment.CreateAsync(null, userFolder);
+                    var envOptions = new CoreWebView2EnvironmentOptions
+                    {
+                        AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+                    };
+                    var env = await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
                     await TabletWebView.EnsureCoreWebView2Async(env);
                 }
 
@@ -1876,12 +1997,7 @@ public partial class TabletOverlayWindow : Window
             }
             if (DutyOfflineSubtext != null) DutyOfflineSubtext.Text = "Apasă pe butonul de mai sus pentru detalii și activare.";
             SetBandagesOfflineUi();
-            if (DutyTitleBarToggleBtn != null)
-            {
-                DutyTitleBarToggleBtn.Content = "⚪ Medici Duty (Inactiv)";
-                DutyTitleBarToggleBtn.Opacity = 0.85;
-                DutyTitleBarToggleBtn.ToolTip = "Medici Duty (Apasă pentru autorizare)";
-            }
+            UpdateDutyTitleBarButton("Medici Duty (Inactiv)", "#94A3B8", 0.85, "Medici Duty (Apasă pentru autorizare)");
             return;
         }
 
@@ -1906,12 +2022,7 @@ public partial class TabletOverlayWindow : Window
             }
             if (DutyOfflineSubtext != null) DutyOfflineSubtext.Text = "Autentifică-te pe md.b-zone.ro în browserul tabletei.";
             SetBandagesOfflineUi();
-            if (DutyTitleBarToggleBtn != null)
-            {
-                DutyTitleBarToggleBtn.Content = "⚪ Medici Duty (Neconectat)";
-                DutyTitleBarToggleBtn.Opacity = 0.85;
-                DutyTitleBarToggleBtn.ToolTip = "Medici Duty (Necesită conectare pe portal)";
-            }
+            UpdateDutyTitleBarButton("Medici Duty (Neconectat)", "#F59E0B", 0.85, "Medici Duty (Necesită conectare pe portal)");
             return;
         }
 
@@ -1936,12 +2047,7 @@ public partial class TabletOverlayWindow : Window
             _currentDutyResult = result;
             if (DutyLastUpdatedText != null) DutyLastUpdatedText.Text = $"Sincronizat: {result.LastUpdated:HH:mm:ss}";
             if (DutySidebarTotalBadge != null) DutySidebarTotalBadge.Text = $"({result.TotalCount})";
-            if (DutyTitleBarToggleBtn != null)
-            {
-                DutyTitleBarToggleBtn.Content = $"🟢 {result.TotalCount} Medici Duty";
-                DutyTitleBarToggleBtn.Opacity = 1.0;
-                DutyTitleBarToggleBtn.ToolTip = "Comută afișarea listei laterale de Medici la Datorie";
-            }
+            UpdateDutyTitleBarButton($"{result.TotalCount} Medici Duty", "#22C55E", 1.0, "Comută afișarea listei laterale de Medici la Datorie");
 
             ApplyDutyFilterAndSearch();
         }
@@ -1962,12 +2068,7 @@ public partial class TabletOverlayWindow : Window
                 }
                 if (DutyOfflineSubtext != null) DutyOfflineSubtext.Text = "Apasă pe butonul de mai sus pentru a deschide pagina de login.";
                 SetBandagesOfflineUi();
-                if (DutyTitleBarToggleBtn != null)
-                {
-                    DutyTitleBarToggleBtn.Content = "⚪ Medici Duty (Neconectat)";
-                    DutyTitleBarToggleBtn.Opacity = 0.85;
-                    DutyTitleBarToggleBtn.ToolTip = "Medici Duty (Necesită conectare pe portal)";
-                }
+                UpdateDutyTitleBarButton("Medici Duty (Neconectat)", "#F59E0B", 0.85, "Medici Duty (Necesită conectare pe portal)");
             }
             else if (_currentDutyResult == null)
             {

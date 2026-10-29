@@ -79,8 +79,15 @@ public sealed class GlobalHotkeyService : IDisposable
         if (msg == WM_HOTKEY)
         {
             var id = wParam.ToInt32();
-            if (_registrations.ContainsKey(id))
+            if (_registrations.TryGetValue(id, out var reg))
             {
+                // Verify virtual key from lParam (HIWORD) to guard against spurious messages or ID collisions
+                int vk = (int)((lParam.ToInt64() >> 16) & 0xFFFF);
+                if (reg.VirtualKey != 0 && vk != 0 && vk != reg.VirtualKey)
+                {
+                    return IntPtr.Zero;
+                }
+
                 handled = true;
                 Triggered?.Invoke(this, id);
             }

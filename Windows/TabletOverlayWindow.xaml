@@ -511,7 +511,7 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.2" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.3" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
@@ -524,7 +524,16 @@
                                 <!-- Right Controls -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                     <!-- Duty Sidebar Toggle Button -->
-                                    <Button x:Name="DutyTitleBarToggleBtn" Content="👥 Medici Duty" Style="{StaticResource TabletBtnStyle}" Height="28" Padding="10,2" FontSize="11" FontWeight="Bold" Margin="0,0,10,0" Click="DutySidebarToggle_Click" ToolTip="Comută afișarea listei laterale de Medici la Datorie"/>
+                                    <Button x:Name="DutyTitleBarToggleBtn" Style="{StaticResource TabletBtnStyle}" Height="28" Padding="10,2" Margin="0,0,10,0" Click="DutySidebarToggle_Click" ToolTip="Comută afișarea listei laterale de Medici la Datorie">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse x:Name="DutyTitleBarStatusDot" Width="7" Height="7" Fill="#94A3B8" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                <Ellipse.Effect>
+                                                    <DropShadowEffect BlurRadius="4" Color="#94A3B8" ShadowDepth="0" Opacity="0.8"/>
+                                                </Ellipse.Effect>
+                                            </Ellipse>
+                                            <TextBlock x:Name="DutyTitleBarToggleText" Text="Medici Duty" FontSize="11" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                     <!-- Network Status -->
                                     <TextBlock Text="5G MD" Foreground="#94a3b8" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <TextBlock Text="⚡ 100%" Foreground="#10b981" FontSize="11" VerticalAlignment="Center" Margin="0,0,12,0"/>
@@ -1268,7 +1277,7 @@
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock Text="🚀 Versiune &amp; Actualizări:" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                                     <Border CornerRadius="4" Background="#1A00E5FF" Padding="6,2" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.2" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
+                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.3" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
                                                     </Border>
                                                     <TextBlock x:Name="SettingsUpdateStatusText" Text="Verificare actualizări la pornire..." Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
                                                 </StackPanel>

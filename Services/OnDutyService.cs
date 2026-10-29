@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -150,6 +150,58 @@ public sealed class OnDutyService
     private const string ApiDutyUrl = "https://md.b-zone.ro/api/duty/live";
     private const string ApiRosterUrl = "https://md.b-zone.ro/api/medici/lista";
     private const string ApiBandagesUrl = "https://md.b-zone.ro/api/bandaje";
+    private const string ApiPingUrl = "https://md.b-zone.ro/api/medici/ping";
+
+    private static DateTime _lastPingSent = DateTime.MinValue;
+    private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(45);
+
+    public Func<IEnumerable<string>, Task>? OnCookiesReceivedAsync { get; set; }
+
+    public void UpdateUserAgent(string userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent)) return;
+        try
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+        }
+        catch {}
+    }
+
+    public async Task<bool> SendKeepAlivePingAsync(string cookieHeader, CancellationToken cancellationToken = default)
+    {
+        if (DateTime.Now - _lastPingSent < PingInterval)
+        {
+            return true;
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, ApiPingUrl);
+            request.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
+            request.Headers.TryAddWithoutValidation("Referer", "https://md.b-zone.ro/");
+            request.Headers.TryAddWithoutValidation("Origin", "https://md.b-zone.ro");
+            request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.Headers.TryGetValues("Set-Cookie", out var setCookies) && OnCookiesReceivedAsync != null)
+            {
+                _ = OnCookiesReceivedAsync(setCookies);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                _lastPingSent = DateTime.Now;
+                return true;
+            }
+        }
+        catch
+        {
+            // Ignore ping errors
+        }
+        return false;
+    }
 
     private const string WebhookUrl = "https://discord.com/api/webhooks/1559981949685076089/F8INgAQjFKfqSfuQ5GnVYZEbUneq4a-Bn9bzc5Qk503rW8gIRXLRZtUkPVMdi-k9hbsm/messages/1564305453792632913";
     private const string BandagesWebhookUrl = "https://discord.com/api/webhooks/1564303786883682465/De5T-8DzZP4-l2a3Je1QfU_gQnXaiYqqEbIX3mN0NfDxBF_CIkPglWPPij5DoRuNykcj/messages/1564305172795101210";
@@ -269,6 +321,10 @@ public sealed class OnDutyService
             request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.Headers.TryGetValues("Set-Cookie", out var setCookiesRoster) && OnCookiesReceivedAsync != null)
+            {
+                _ = OnCookiesReceivedAsync(setCookiesRoster);
+            }
             if (!response.IsSuccessStatusCode)
             {
                 return _cachedRosterByCnp.Count > 0;
@@ -316,6 +372,10 @@ public sealed class OnDutyService
             request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.Headers.TryGetValues("Set-Cookie", out var setCookiesRoster) && OnCookiesReceivedAsync != null)
+            {
+                _ = OnCookiesReceivedAsync(setCookiesRoster);
+            }
             if (!response.IsSuccessStatusCode) return null;
 
             var jsonStream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -368,6 +428,10 @@ public sealed class OnDutyService
             request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.Headers.TryGetValues("Set-Cookie", out var setCookiesRoster) && OnCookiesReceivedAsync != null)
+            {
+                _ = OnCookiesReceivedAsync(setCookiesRoster);
+            }
             if (!response.IsSuccessStatusCode)
             {
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -514,6 +578,7 @@ public sealed class OnDutyService
         // 1. If cookies are provided, attempt to fetch from official MD Panel APIs
         if (!string.IsNullOrWhiteSpace(cookieHeader))
         {
+            _ = SendKeepAlivePingAsync(cookieHeader, cancellationToken);
             var apiDutyTask = FetchDutyFromApiAsync(cookieHeader, cancellationToken);
             var apiBandagesTask = FetchBandagesFromApiAsync(cookieHeader, cancellationToken);
 

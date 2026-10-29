@@ -15,11 +15,12 @@ public sealed class KeybindOrchestrator : IDisposable
     private const int OVERLAY_TOGGLE_HOTKEY_ID = 9998;
     private const int STOP_TOGGLE_HOTKEY_ID = 9997;
     private const int TABLET_TOGGLE_HOTKEY_ID = 9996;
+    private const int KEYBIND_ID_BASE = 1000;
     private readonly GlobalHotkeyService _hotkey = new();
     private readonly ChatSequenceService _sequence;
     private CancellationTokenSource? _runCts;
     private readonly Dictionary<int, KeybindEntry> _entryMap = new(); // hotkeyId -> entry
-    private int _nextHotkeyId = 1;
+    private int _nextHotkeyId = KEYBIND_ID_BASE;
     private IntPtr _previousActiveWindow = IntPtr.Zero;
 
     public KeybindSettings Settings { get; private set; }
@@ -63,7 +64,7 @@ public sealed class KeybindOrchestrator : IDisposable
         _hotkey.Initialize(helper);
 
         _entryMap.Clear();
-        _nextHotkeyId = 1;
+        _nextHotkeyId = KEYBIND_ID_BASE;
 
         if (Settings.GlobalEnabled)
         {
@@ -76,7 +77,7 @@ public sealed class KeybindOrchestrator : IDisposable
                 try
                 {
                     // Register with MOD_NOREPEAT (0x4000) to prevent auto-repeat when holding down the key
-                    _hotkey.Register(hotkeyId, entry.HotkeyModifiers | 0x4000, entry.HotkeyVirtualKey);
+                    _hotkey.Register(hotkeyId, (entry.HotkeyModifiers & 0x000F) | 0x4000, entry.HotkeyVirtualKey);
                     _entryMap[hotkeyId] = entry;
                 }
                 catch
@@ -200,6 +201,33 @@ public sealed class KeybindOrchestrator : IDisposable
 
         if (!_entryMap.TryGetValue(hotkeyId, out var entry)) return;
         if (!entry.Enabled) return;
+
+        // Diagnostic logging to track exactly what key/process triggered the keybind
+        string activeProc = "Unknown";
+        try
+        {
+            IntPtr fgHwnd = GetForegroundWindow();
+            GetWindowThreadProcessId(fgHwnd, out uint pid);
+            if (pid != 0)
+            {
+                using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+                activeProc = p.ProcessName;
+            }
+        }
+        catch {}
+
+        var held = new List<string>();
+        if ((GetAsyncKeyState(0x10) & 0x8000) != 0) held.Add("Shift");
+        if ((GetAsyncKeyState(0x11) & 0x8000) != 0) held.Add("Ctrl");
+        if ((GetAsyncKeyState(0x12) & 0x8000) != 0) held.Add("Alt");
+        if ((GetAsyncKeyState(0x21) & 0x8000) != 0) held.Add("PageUp");
+        if ((GetAsyncKeyState(0x22) & 0x8000) != 0) held.Add("PageDown");
+        if ((GetAsyncKeyState(0x0D) & 0x8000) != 0) held.Add("Enter");
+        if ((GetAsyncKeyState(0x08) & 0x8000) != 0) held.Add("Backspace");
+        if ((GetAsyncKeyState(0x20) & 0x8000) != 0) held.Add("Space");
+
+        LogDebug($"Keybind Triggered: ID={hotkeyId}, Name='{entry.Name}', TargetVK={entry.HotkeyVirtualKey}, Foreground='{activeProc}', InGame={GameProcessHelper.IsGameForeground()}, HeldKeys=[{string.Join(", ", held)}]");
+
         if (RoleplayComplianceService.HasBlockedLines(entry.Script, out _, out _))
         {
             SoundService.PlayKeybindStop();
@@ -248,6 +276,18 @@ public sealed class KeybindOrchestrator : IDisposable
                 MessageBox.Show(ex.Message, "Keybind error", MessageBoxButton.OK, MessageBoxImage.Error);
             });
         }
+    }
+
+    private static void LogDebug(string message)
+    {
+        try
+        {
+            string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MDTab-Helper");
+            string file = System.IO.Path.Combine(dir, "keybind_debug.log");
+            string line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}";
+            System.IO.File.AppendAllText(file, line);
+        }
+        catch {}
     }
 
     public void Dispose()
