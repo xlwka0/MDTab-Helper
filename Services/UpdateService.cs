@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -28,7 +28,7 @@ public class UpdateService
     public UpdateService()
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.6.3");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.6.4");
         _httpClient.Timeout = TimeSpan.FromSeconds(20);
     }
 
@@ -40,7 +40,7 @@ public class UpdateService
         {
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
-        return "2.6.3";
+        return "2.6.4";
     }
 
     public async Task<UpdateInfo> CheckForUpdatesAsync()

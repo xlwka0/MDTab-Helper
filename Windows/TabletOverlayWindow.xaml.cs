@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -11,6 +11,7 @@ using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using Microsoft.Web.WebView2.Core;
 using MDHelper.Models;
 using MDHelper.Services;
@@ -31,6 +32,7 @@ public partial class TabletOverlayWindow : Window
     private bool _isInitialized = false;
     private bool _webViewInitialized = false;
     private bool _isPopulatingKeybindPanel = false;
+    private bool _isUpdatingImagePropertiesUi = false;
 
     // Recording keybind flags
     private KeybindViewModel? _recordingKeybindEntry;
@@ -92,6 +94,14 @@ public partial class TabletOverlayWindow : Window
 
         // Bind images
         TabletImagesDataGrid.ItemsSource = _images;
+        if (_images.Count > 0)
+        {
+            TabletImagesDataGrid.SelectedIndex = 0;
+        }
+        else
+        {
+            ClearTabletPropertiesPanel();
+        }
 
         // Bind Keybinds
         _tabletKeybinds = new ObservableCollection<KeybindViewModel>();
@@ -743,6 +753,10 @@ public partial class TabletOverlayWindow : Window
         {
             PopulateTabletPropertiesPanel(image);
         }
+        else if (_images.Count > 0)
+        {
+            TabletImagesDataGrid.SelectedIndex = 0;
+        }
         else
         {
             ClearTabletPropertiesPanel();
@@ -751,101 +765,456 @@ public partial class TabletOverlayWindow : Window
 
     private void PopulateTabletPropertiesPanel(OverlayImage image)
     {
-        TabletPropertiesPanel.IsEnabled = true;
-        TabletNoSelectionText.Visibility = Visibility.Collapsed;
-        
-        TabletImageOpacitySlider.Value = image.Opacity;
-        TabletImageOpacityValueText.Text = $"{(image.Opacity * 100):F0}%";
-        
-        TabletPosXTextBox.Text = image.X.ToString("F0");
-        TabletPosYTextBox.Text = image.Y.ToString("F0");
-        TabletImageWidthTextBox.Text = image.Width.ToString("F0");
-        TabletImageHeightTextBox.Text = image.Height.ToString("F0");
-        
-        TabletMaintainAspectCheckBox.IsChecked = image.MaintainAspectRatio;
-        TabletLockedCheckBox.IsChecked = image.IsLocked;
+        _isUpdatingImagePropertiesUi = true;
+        try
+        {
+            TabletPropertiesPanel.IsEnabled = true;
+            TabletNoSelectionText.Visibility = Visibility.Collapsed;
+            
+            TabletImageOpacitySlider.Value = image.Opacity;
+            TabletImageOpacityValueText.Text = $"{(image.Opacity * 100):F0}%";
+            
+            double minX = Math.Min(-2500, image.X - 500);
+            double maxX = Math.Max(3840, image.X + 1500);
+            double minY = Math.Min(-1500, image.Y - 500);
+            double maxY = Math.Max(2160, image.Y + 1500);
+            
+            if (TabletPosXSlider != null)
+            {
+                TabletPosXSlider.Minimum = minX;
+                TabletPosXSlider.Maximum = maxX;
+                TabletPosXSlider.Value = Math.Clamp(image.X, minX, maxX);
+            }
+            if (TabletPosYSlider != null)
+            {
+                TabletPosYSlider.Minimum = minY;
+                TabletPosYSlider.Maximum = maxY;
+                TabletPosYSlider.Value = Math.Clamp(image.Y, minY, maxY);
+            }
+
+            double maxDimension = Math.Max(3840, Math.Max(image.Width, image.Height) + 500);
+            if (TabletImageWidthSlider != null)
+            {
+                TabletImageWidthSlider.Minimum = 30;
+                TabletImageWidthSlider.Maximum = maxDimension;
+                TabletImageWidthSlider.Value = Math.Clamp(image.Width, 30, TabletImageWidthSlider.Maximum);
+            }
+            if (TabletImageHeightSlider != null)
+            {
+                TabletImageHeightSlider.Minimum = 30;
+                TabletImageHeightSlider.Maximum = maxDimension;
+                TabletImageHeightSlider.Value = Math.Clamp(image.Height, 30, TabletImageHeightSlider.Maximum);
+            }
+            TabletPosXTextBox.Text = image.X.ToString("F0");
+            TabletPosYTextBox.Text = image.Y.ToString("F0");
+            TabletImageWidthTextBox.Text = image.Width.ToString("F0");
+            TabletImageHeightTextBox.Text = image.Height.ToString("F0");
+            
+            TabletMaintainAspectCheckBox.IsChecked = image.MaintainAspectRatio;
+            TabletLockedCheckBox.IsChecked = image.IsLocked;
+            UpdateAspectVisibility(image.MaintainAspectRatio);
+        }
+        finally
+        {
+            _isUpdatingImagePropertiesUi = false;
+        }
     }
 
     private void ClearTabletPropertiesPanel()
     {
         TabletPropertiesPanel.IsEnabled = false;
+        TabletNoSelectionText.Text = "Nu există nicio imagine adăugată. Folosește butonul '➕ Adaugă Imagine'.";
         TabletNoSelectionText.Visibility = Visibility.Visible;
     }
 
     private void TabletImageOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
         {
             image.Opacity = e.NewValue;
             TabletImageOpacityValueText.Text = $"{(e.NewValue * 100):F0}%";
             _saveConfigCallback?.Invoke();
-            _refreshOverlaysCallback?.Invoke();
         }
+    }
+
+    private void TabletPosXSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isUpdatingImagePropertiesUi) return;
+        if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
+
+        double val = Math.Round(e.NewValue);
+        image.X = val;
+
+        _isUpdatingImagePropertiesUi = true;
+        try
+        {
+            TabletPosXTextBox.Text = val.ToString("F0");
+        }
+        finally
+        {
+            _isUpdatingImagePropertiesUi = false;
+        }
+
+        _saveConfigCallback?.Invoke();
+    }
+
+    private void TabletPosYSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isUpdatingImagePropertiesUi) return;
+        if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
+
+        double val = Math.Round(e.NewValue);
+        image.Y = val;
+
+        _isUpdatingImagePropertiesUi = true;
+        try
+        {
+            TabletPosYTextBox.Text = val.ToString("F0");
+        }
+        finally
+        {
+            _isUpdatingImagePropertiesUi = false;
+        }
+
+        _saveConfigCallback?.Invoke();
     }
 
     private void TabletPositionTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
         
+        bool changed = false;
         if (double.TryParse(TabletPosXTextBox.Text, out var x))
+        {
             image.X = x;
+            if (TabletPosXSlider != null)
+            {
+                if (x > TabletPosXSlider.Maximum) TabletPosXSlider.Maximum = x + 500;
+                if (x < TabletPosXSlider.Minimum) TabletPosXSlider.Minimum = x - 500;
+                _isUpdatingImagePropertiesUi = true;
+                try
+                {
+                    TabletPosXSlider.Value = Math.Clamp(x, TabletPosXSlider.Minimum, TabletPosXSlider.Maximum);
+                }
+                finally
+                {
+                    _isUpdatingImagePropertiesUi = false;
+                }
+            }
+            changed = true;
+        }
+
         if (double.TryParse(TabletPosYTextBox.Text, out var y))
+        {
             image.Y = y;
+            if (TabletPosYSlider != null)
+            {
+                if (y > TabletPosYSlider.Maximum) TabletPosYSlider.Maximum = y + 500;
+                if (y < TabletPosYSlider.Minimum) TabletPosYSlider.Minimum = y - 500;
+                _isUpdatingImagePropertiesUi = true;
+                try
+                {
+                    TabletPosYSlider.Value = Math.Clamp(y, TabletPosYSlider.Minimum, TabletPosYSlider.Maximum);
+                }
+                finally
+                {
+                    _isUpdatingImagePropertiesUi = false;
+                }
+            }
+            changed = true;
+        }
         
+        if (changed)
+        {
+            _saveConfigCallback?.Invoke();
+        }
+    }
+
+    private void UpdateAspectVisibility(bool maintainAspect)
+    {
+        if (TabletWidthLabel != null)
+        {
+            TabletWidthLabel.Text = maintainAspect ? "Dimensiune:" : "Lățime:";
+        }
+        if (TabletImageHeightGrid != null)
+        {
+            TabletImageHeightGrid.Visibility = maintainAspect ? Visibility.Collapsed : Visibility.Visible;
+        }
+        if (TabletDimensionSubtext != null)
+        {
+            if (maintainAspect && TabletImagesDataGrid.SelectedItem is OverlayImage img)
+            {
+                TabletDimensionSubtext.Text = $"Dimensiune: {img.Width:F0} × {img.Height:F0} px";
+                TabletDimensionSubtext.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                TabletDimensionSubtext.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
+    private void EnsureSizeSlidersMax(double requiredVal)
+    {
+        if (TabletImageWidthSlider != null && TabletImageHeightSlider != null)
+        {
+            double currentMax = Math.Max(TabletImageWidthSlider.Maximum, TabletImageHeightSlider.Maximum);
+            if (requiredVal > currentMax)
+            {
+                double newMax = requiredVal + 500;
+                TabletImageWidthSlider.Maximum = newMax;
+                TabletImageHeightSlider.Maximum = newMax;
+            }
+        }
+    }
+
+    private void TabletImageWidthSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isUpdatingImagePropertiesUi) return;
+        if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
+
+        double newWidth = Math.Round(e.NewValue);
+        if (newWidth <= 0) return;
+
+        image.Width = newWidth;
+
+        _isUpdatingImagePropertiesUi = true;
+        try
+        {
+            TabletImageWidthTextBox.Text = newWidth.ToString("F0");
+
+            if (image.MaintainAspectRatio)
+            {
+                double ratio = GetImageAspectRatio(image);
+                if (ratio > 0)
+                {
+                    double newHeight = Math.Max(20, Math.Round(newWidth / ratio));
+                    image.Height = newHeight;
+                    if (TabletImageHeightSlider != null)
+                    {
+                        EnsureSizeSlidersMax(newHeight);
+                        TabletImageHeightSlider.Value = Math.Clamp(newHeight, TabletImageHeightSlider.Minimum, TabletImageHeightSlider.Maximum);
+                    }
+                    TabletImageHeightTextBox.Text = newHeight.ToString("F0");
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingImagePropertiesUi = false;
+        }
+
         _saveConfigCallback?.Invoke();
-        _refreshOverlaysCallback?.Invoke();
+    }
+
+    private void TabletImageHeightSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isUpdatingImagePropertiesUi) return;
+        if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
+
+        double newHeight = Math.Round(e.NewValue);
+        if (newHeight <= 0) return;
+
+        image.Height = newHeight;
+
+        _isUpdatingImagePropertiesUi = true;
+        try
+        {
+            TabletImageHeightTextBox.Text = newHeight.ToString("F0");
+
+            if (image.MaintainAspectRatio)
+            {
+                double ratio = GetImageAspectRatio(image);
+                if (ratio > 0)
+                {
+                    double newWidth = Math.Max(20, Math.Round(newHeight * ratio));
+                    image.Width = newWidth;
+                    if (TabletImageWidthSlider != null)
+                    {
+                        EnsureSizeSlidersMax(newWidth);
+                        TabletImageWidthSlider.Value = Math.Clamp(newWidth, TabletImageWidthSlider.Minimum, TabletImageWidthSlider.Maximum);
+                    }
+                    TabletImageWidthTextBox.Text = newWidth.ToString("F0");
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingImagePropertiesUi = false;
+        }
+
+        _saveConfigCallback?.Invoke();
     }
 
     private void TabletSizeTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
         
-        if (double.TryParse(TabletImageWidthTextBox.Text, out var width))
+        bool changed = false;
+        if (double.TryParse(TabletImageWidthTextBox.Text, out var width) && width > 0)
+        {
             image.Width = width;
-        if (double.TryParse(TabletImageHeightTextBox.Text, out var height))
+            if (TabletImageWidthSlider != null)
+            {
+                EnsureSizeSlidersMax(width);
+                _isUpdatingImagePropertiesUi = true;
+                try
+                {
+                    TabletImageWidthSlider.Value = Math.Clamp(width, TabletImageWidthSlider.Minimum, TabletImageWidthSlider.Maximum);
+                }
+                finally
+                {
+                    _isUpdatingImagePropertiesUi = false;
+                }
+            }
+            changed = true;
+        }
+
+        if (double.TryParse(TabletImageHeightTextBox.Text, out var height) && height > 0)
+        {
             image.Height = height;
+            if (TabletImageHeightSlider != null)
+            {
+                EnsureSizeSlidersMax(height);
+                _isUpdatingImagePropertiesUi = true;
+                try
+                {
+                    TabletImageHeightSlider.Value = Math.Clamp(height, TabletImageHeightSlider.Minimum, TabletImageHeightSlider.Maximum);
+                }
+                finally
+                {
+                    _isUpdatingImagePropertiesUi = false;
+                }
+            }
+            changed = true;
+        }
         
-        _saveConfigCallback?.Invoke();
-        _refreshOverlaysCallback?.Invoke();
+        if (changed)
+        {
+            _saveConfigCallback?.Invoke();
+        }
     }
+
+    private double GetImageAspectRatio(OverlayImage image)
+    {
+        try
+        {
+            string absPath = image.GetAbsoluteFilePath();
+            if (File.Exists(absPath))
+            {
+                using var stream = File.OpenRead(absPath);
+                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                if (decoder.Frames.Count > 0)
+                {
+                    var frame = decoder.Frames[0];
+                    if (frame.PixelHeight > 0)
+                    {
+                        return frame.PixelWidth / (double)frame.PixelHeight;
+                    }
+                }
+            }
+        }
+        catch {}
+
+        if (image.Width > 0 && image.Height > 0)
+        {
+            return image.Width / image.Height;
+        }
+
+        return 1.0;
+    }
+
+    private void TabletResetSizeBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (TabletImagesDataGrid.SelectedItem is not OverlayImage image) return;
+        try
+        {
+            string absPath = image.GetAbsoluteFilePath();
+            if (File.Exists(absPath))
+            {
+                using var stream = File.OpenRead(absPath);
+                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                if (decoder.Frames.Count > 0)
+                {
+                    var frame = decoder.Frames[0];
+                    if (frame.PixelWidth > 0 && frame.PixelHeight > 0)
+                    {
+                        image.Width = frame.PixelWidth;
+                        image.Height = frame.PixelHeight;
+
+                        _isUpdatingImagePropertiesUi = true;
+                        try
+                        {
+                            if (TabletImageWidthSlider != null)
+                            {
+                                EnsureSizeSlidersMax(image.Width);
+                                TabletImageWidthSlider.Value = Math.Clamp(image.Width, TabletImageWidthSlider.Minimum, TabletImageWidthSlider.Maximum);
+                            }
+                            if (TabletImageHeightSlider != null)
+                            {
+                                EnsureSizeSlidersMax(image.Height);
+                                TabletImageHeightSlider.Value = Math.Clamp(image.Height, TabletImageHeightSlider.Minimum, TabletImageHeightSlider.Maximum);
+                            }
+
+                            TabletImageWidthTextBox.Text = image.Width.ToString("F0");
+                            TabletImageHeightTextBox.Text = image.Height.ToString("F0");
+                        }
+                        finally
+                        {
+                            _isUpdatingImagePropertiesUi = false;
+                        }
+
+                        _saveConfigCallback?.Invoke();
+                    }
+                }
+            }
+        }
+        catch {}
+    }
+
 
     private void TabletMaintainAspectCheckBox_Checked(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
         {
             image.MaintainAspectRatio = true;
+            UpdateAspectVisibility(true);
             _saveConfigCallback?.Invoke();
-            _refreshOverlaysCallback?.Invoke();
         }
     }
 
     private void TabletMaintainAspectCheckBox_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
         {
             image.MaintainAspectRatio = false;
+            UpdateAspectVisibility(false);
             _saveConfigCallback?.Invoke();
-            _refreshOverlaysCallback?.Invoke();
         }
     }
 
     private void TabletLockedCheckBox_Checked(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
         {
             image.IsLocked = true;
             _saveConfigCallback?.Invoke();
-            _refreshOverlaysCallback?.Invoke();
         }
     }
 
     private void TabletLockedCheckBox_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (_isUpdatingImagePropertiesUi) return;
         if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
         {
             image.IsLocked = false;
             _saveConfigCallback?.Invoke();
-            _refreshOverlaysCallback?.Invoke();
         }
     }
 
@@ -856,7 +1225,14 @@ public partial class TabletOverlayWindow : Window
         _images.Remove(selectedImage);
         _saveConfigCallback?.Invoke();
         _refreshOverlaysCallback?.Invoke();
-        ClearTabletPropertiesPanel();
+        if (_images.Count > 0)
+        {
+            TabletImagesDataGrid.SelectedIndex = 0;
+        }
+        else
+        {
+            ClearTabletPropertiesPanel();
+        }
     }
 
     private void TabletAddImageBtn_Click(object sender, RoutedEventArgs e)
