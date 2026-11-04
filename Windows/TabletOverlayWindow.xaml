@@ -890,7 +890,7 @@
                                                 </Style>
                                             </DataGrid.RowStyle>
                                             <DataGrid.Columns>
-                                                <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*"/>
+                                                <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
                                                 <DataGridTextColumn Header="Tastă Trigger" Binding="{Binding KeyDisplay}" Width="120" IsReadOnly="True"/>
                                                 <DataGridTemplateColumn Header="Activat" Width="60">
                                                     <DataGridTemplateColumn.CellTemplate>
@@ -1024,7 +1024,7 @@
 
                                     <!-- Left: Images List -->
                                     <Border Grid.Column="0" Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="15">
-                                        <DataGrid x:Name="TabletImagesDataGrid" IsReadOnly="True" Cursor="Hand"
+                                        <DataGrid x:Name="TabletImagesDataGrid" Cursor="Hand"
                                                   AutoGenerateColumns="False"
                                                   CanUserAddRows="False"
                                                   CanUserDeleteRows="False"
@@ -1058,10 +1058,28 @@
                                                 </Style>
                                             </DataGrid.RowStyle>
                                             <DataGrid.Columns>
-                                                <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*"/>
-                                                <DataGridTextColumn Header="Mărime" Binding="{Binding SizeDisplay}" Width="100"/>
-                                                <DataGridCheckBoxColumn Header="Locked" Binding="{Binding IsLocked}" Width="60"/>
-                                                <DataGridCheckBoxColumn Header="Visible" Binding="{Binding IsVisible}" Width="60"/>
+                                                <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+                                                <DataGridTextColumn Header="Mărime" Binding="{Binding SizeDisplay}" Width="100" IsReadOnly="True"/>
+                                                <DataGridTemplateColumn Header="Locked" Width="60">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox IsChecked="{Binding IsLocked, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                      Cursor="Hand"
+                                                                      Click="TabletImageLockedGridCheckBox_Click"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTemplateColumn Header="Visible" Width="60">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox IsChecked="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                      Cursor="Hand"
+                                                                      Click="TabletImageVisibleGridCheckBox_Click"/>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
                                     </Border>
@@ -1149,7 +1167,8 @@
                                                     <TextBox x:Name="TabletImageHeightTextBox" Grid.Column="2" Text="200" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletSizeTextBox_TextChanged"/>
                                                 </Grid>
                                                 <CheckBox x:Name="TabletMaintainAspectCheckBox" Content="Menține aspect ratio" Foreground="#ccc" FontSize="12" Checked="TabletMaintainAspectCheckBox_Checked" Unchecked="TabletMaintainAspectCheckBox_Unchecked" Margin="0,0,0,8"/>
-                                                <CheckBox x:Name="TabletLockedCheckBox" Content="Locked (Click-through)" Foreground="#ccc" FontSize="12" Checked="TabletLockedCheckBox_Checked" Unchecked="TabletLockedCheckBox_Unchecked" Margin="0,0,0,15"/>
+                                                <CheckBox x:Name="TabletLockedCheckBox" Content="Locked (Click-through)" Foreground="#ccc" FontSize="12" Checked="TabletLockedCheckBox_Checked" Unchecked="TabletLockedCheckBox_Unchecked" Margin="0,0,0,8"/>
+                                                <CheckBox x:Name="TabletVisibleCheckBox" Content="Vizibil pe ecran (Visible)" Foreground="#ccc" FontSize="12" Checked="TabletVisibleCheckBox_Checked" Unchecked="TabletVisibleCheckBox_Unchecked" Margin="0,0,0,15"/>
 
                                                 <!-- Delete Button -->
                                                 <Button x:Name="TabletRemoveImageBtn" Content="🗑️ Șterge Imagine" Style="{StaticResource TabletBtnStyle}" Background="#2Aef4444" Click="TabletRemoveImageBtn_Click"/>

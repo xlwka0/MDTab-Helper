@@ -223,10 +223,28 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="120"/>
-                            <DataGridCheckBoxColumn Header="Locked" Binding="{Binding IsLocked}" Width="60"/>
-                            <DataGridCheckBoxColumn Header="Visible" Binding="{Binding IsVisible}" Width="60"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="120" IsReadOnly="True"/>
+                            <DataGridTemplateColumn Header="Locked" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsLocked, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Cursor="Hand"
+                                                  Click="ImageLockedGridCheckBox_Click"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Visible" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsVisible, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Cursor="Hand"
+                                                  Click="ImageVisibleGridCheckBox_Click"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>

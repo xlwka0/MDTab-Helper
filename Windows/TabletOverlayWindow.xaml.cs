@@ -857,6 +857,10 @@ public partial class TabletOverlayWindow : Window
             
             TabletMaintainAspectCheckBox.IsChecked = image.MaintainAspectRatio;
             TabletLockedCheckBox.IsChecked = image.IsLocked;
+            if (TabletVisibleCheckBox != null)
+            {
+                TabletVisibleCheckBox.IsChecked = image.IsVisible;
+            }
             UpdateAspectVisibility(image.MaintainAspectRatio);
         }
         finally
@@ -1260,6 +1264,82 @@ public partial class TabletOverlayWindow : Window
         {
             image.IsLocked = false;
             _saveConfigCallback?.Invoke();
+        }
+    }
+
+    private void TabletVisibleCheckBox_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingImagePropertiesUi) return;
+        if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
+        {
+            image.IsVisible = true;
+            _saveConfigCallback?.Invoke();
+            _refreshOverlaysCallback?.Invoke();
+        }
+    }
+
+    private void TabletVisibleCheckBox_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (_isUpdatingImagePropertiesUi) return;
+        if (TabletImagesDataGrid.SelectedItem is OverlayImage image)
+        {
+            image.IsVisible = false;
+            _saveConfigCallback?.Invoke();
+            _refreshOverlaysCallback?.Invoke();
+        }
+    }
+
+    private void TabletImageLockedGridCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb && cb.DataContext is OverlayImage image)
+        {
+            if (TabletImagesDataGrid.SelectedItem == image)
+            {
+                _isUpdatingImagePropertiesUi = true;
+                try
+                {
+                    TabletLockedCheckBox.IsChecked = image.IsLocked;
+                }
+                finally
+                {
+                    _isUpdatingImagePropertiesUi = false;
+                }
+            }
+            else
+            {
+                TabletImagesDataGrid.SelectedItem = image;
+            }
+
+            _saveConfigCallback?.Invoke();
+        }
+    }
+
+    private void TabletImageVisibleGridCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb && cb.DataContext is OverlayImage image)
+        {
+            if (TabletImagesDataGrid.SelectedItem == image)
+            {
+                _isUpdatingImagePropertiesUi = true;
+                try
+                {
+                    if (TabletVisibleCheckBox != null)
+                    {
+                        TabletVisibleCheckBox.IsChecked = image.IsVisible;
+                    }
+                }
+                finally
+                {
+                    _isUpdatingImagePropertiesUi = false;
+                }
+            }
+            else
+            {
+                TabletImagesDataGrid.SelectedItem = image;
+            }
+
+            _saveConfigCallback?.Invoke();
+            _refreshOverlaysCallback?.Invoke();
         }
     }
 

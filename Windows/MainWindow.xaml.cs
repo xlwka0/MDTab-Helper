@@ -551,6 +551,35 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ImageLockedGridCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb && cb.DataContext is OverlayImage image)
+        {
+            if (ImagesDataGrid.SelectedItem == image)
+            {
+                LockedCheckBox.IsChecked = image.IsLocked;
+            }
+            else
+            {
+                ImagesDataGrid.SelectedItem = image;
+            }
+            SaveConfiguration();
+        }
+    }
+
+    private void ImageVisibleGridCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb && cb.DataContext is OverlayImage image)
+        {
+            if (ImagesDataGrid.SelectedItem != image)
+            {
+                ImagesDataGrid.SelectedItem = image;
+            }
+            SaveConfiguration();
+            RefreshOverlays();
+        }
+    }
+
     private void ResetPositionBtn_Click(object sender, RoutedEventArgs e)
     {
         if (ImagesDataGrid.SelectedItem is not OverlayImage image) return;
