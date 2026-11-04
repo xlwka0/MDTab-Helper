@@ -28,7 +28,7 @@ public class UpdateService
     public UpdateService()
     {
         _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.6.6");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.6.7");
         _httpClient.Timeout = TimeSpan.FromSeconds(20);
     }
 
@@ -40,7 +40,7 @@ public class UpdateService
         {
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
-        return "2.6.6";
+        return "2.6.7";
     }
 
     public async Task<UpdateInfo> CheckForUpdatesAsync()

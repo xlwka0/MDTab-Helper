@@ -95,7 +95,7 @@ try {
     $fx = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarAnimations" -ErrorAction SilentlyContinue
     if ($fx -ne $null -and $fx.TaskbarAnimations -eq 0) {
         Write-Host "  [!] Setarea de Windows pentru efecte vizuale este redusa/oprita." -ForegroundColor Yellow
-        Write-Host "      -> In MDTab-Helper v2.6.6 animatiile sunt forțate sa ruleze oricum!" -ForegroundColor Cyan
+        Write-Host "      -> In MDTab-Helper v2.6.7 animatiile sunt forțate sa ruleze oricum!" -ForegroundColor Cyan
     } else {
         Write-Host "  [OK] Efectele vizuale/animatiile din Windows sunt ACTIVE." -ForegroundColor Green
     }
@@ -118,7 +118,7 @@ Write-Host " CONCLUZIE SI SOLUTIE RECOMANDATA:" -ForegroundColor Yellow
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host " Daca ai vazut '401 Unauthorized' la testul 2 (Medici On-Duty / Bandaje):" -ForegroundColor White
 Write-Host "  -> Totul functioneaza normal pe server, doar ca sesiunea ta a expirat!" -ForegroundColor Cyan
-Write-Host "  -> Solutie: Deschide tableta (MDTab-Helper v2.6.6), apasa pe butonul:" -ForegroundColor White
+Write-Host "  -> Solutie: Deschide tableta (MDTab-Helper v2.6.7), apasa pe butonul:" -ForegroundColor White
 Write-Host "     'Reconectare Portal MD' (sau 'PORTAL ANGAJATI') si logheaza-te." -ForegroundColor Yellow
 Write-Host "     Imediat ce te-ai logat, lista si bandajele se incarca automat!" -ForegroundColor Green
 Write-Host ""

@@ -10,7 +10,7 @@ echo.
 echo Acest script va:
 echo   1. Opreste procesele vechi care ruleaza in fundal (MDHelper / MDTab-Helper).
 echo   2. Sterge fisierele vechi si duplicatele din Desktop si Downloads.
-echo   3. Descarca automat ultima versiune oficiala (v2.6.6) direct pe Desktop.
+echo   3. Descarca automat ultima versiune oficiala direct pe Desktop.
 echo.
 pause
 
@@ -87,7 +87,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
 echo.
 echo ======================================================================
 color 0A
-echo   GATA! Versiunea veche a fost stearsa, iar ultima versiune (v2.6.6)
+echo   GATA! Versiunea veche a fost stearsa, iar ultima versiune oficiala
 echo   este instalata curat in folderul:
 echo   "%TARGET_DIR%\MDTab-Helper.exe"
 echo ======================================================================
