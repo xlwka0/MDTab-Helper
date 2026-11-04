@@ -511,7 +511,7 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.4" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.5" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
@@ -684,8 +684,8 @@
                                             </StackPanel>
                                         </Button>
                                         
-                                        <!-- Overlays Manager App -->
-                                        <Button Style="{StaticResource DesktopAppButtonStyle}" Margin="20" Width="100" Height="110" Click="OverlaysApp_Click">
+                                        <!-- MDTab-Tools App (Keybinds & Overlays) -->
+                                        <Button Style="{StaticResource DesktopAppButtonStyle}" Margin="20" Width="100" Height="110" Click="ToolsApp_Click">
                                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <Border CornerRadius="16" Width="68" Height="68" ClipToBounds="True">
                                                     <Border.Effect>
@@ -693,24 +693,7 @@
                                                     </Border.Effect>
                                                     <Image Source="/Assets/icon_mdhelper.png" Stretch="UniformToFill"/>
                                                 </Border>
-                                                <TextBlock Text="Overlays" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,0" TextAlignment="Center">
-                                                    <TextBlock.Effect>
-                                                        <DropShadowEffect BlurRadius="4" Color="Black" Opacity="0.9" ShadowDepth="1"/>
-                                                    </TextBlock.Effect>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </Button>
-
-                                        <!-- Keybinds App -->
-                                        <Button Style="{StaticResource DesktopAppButtonStyle}" Margin="20" Width="100" Height="110" Click="KeybindsApp_Click">
-                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <Border CornerRadius="16" Width="68" Height="68" ClipToBounds="True">
-                                                    <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="12" Color="Black" Opacity="0.5" ShadowDepth="3"/>
-                                                    </Border.Effect>
-                                                    <Image Source="/Assets/icon_mdhelper.png" Stretch="UniformToFill"/>
-                                                </Border>
-                                                <TextBlock Text="Keybinds" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,0" TextAlignment="Center">
+                                                <TextBlock Text="MDTab-Tools" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,8,0,0" TextAlignment="Center">
                                                     <TextBlock.Effect>
                                                         <DropShadowEffect BlurRadius="4" Color="Black" Opacity="0.9" ShadowDepth="1"/>
                                                     </TextBlock.Effect>
@@ -754,7 +737,7 @@
                                                 <Image Source="/Assets/icon_panel.png" Stretch="UniformToFill"/>
                                             </Border>
                                         </Button>
-                                        <Button Width="50" Height="50" Margin="8,0" Style="{x:Null}" Cursor="Hand" Click="OverlaysApp_Click">
+                                        <Button Width="50" Height="50" Margin="8,0" Style="{x:Null}" Cursor="Hand" Click="ToolsApp_Click" ToolTip="MDTab-Tools (Keybinds &amp; Overlays)">
                                             <Border CornerRadius="12" ClipToBounds="True">
                                                 <Image Source="/Assets/icon_mdhelper.png" Stretch="UniformToFill"/>
                                             </Border>
@@ -775,197 +758,95 @@
                                 <wv2:WebView2 x:Name="TabletWebView"/>
                             </Grid>
 
-                            <!-- OVERLAYS TAB CONTENT -->
-                            <Grid x:Name="OverlaysTabContent" Visibility="Collapsed" Background="#0f0f1a">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
+                            <!-- TOOLS TAB CONTENT (MDTab-Tools: Keybinds &amp; Overlays) -->
+                            <Grid x:Name="ToolsTabContent" Visibility="Collapsed" Background="#0f0f1a">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="210"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                                <!-- Header Area inside Overlays Tab -->
-                                <Grid Grid.Row="0" Margin="20,20,20,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="0" Content="← Înapoi" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Padding="10,4" Margin="0,0,14,0" Click="HomeBtn_Click" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="Overlays Controller" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                        <Button x:Name="TabletAddImageBtn" Content="➕ Adaugă Imagine" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletAddImageBtn_Click" Margin="0,0,8,0"/>
-                                        <Button x:Name="TabletToggleOverlaysBtn" Content="👁️ Afișează / Ascunde Overlays" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletToggleOverlaysBtn_Click"/>
-                                    </StackPanel>
-                                </Grid>
+                                <!-- Left Sidebar Navigation -->
+                                <Border Grid.Column="0" Background="#111122" BorderBrush="#1f1f38" BorderThickness="0,0,1,0" Padding="14,16">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="16"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
 
-                                <!-- Two-Column Content -->
-                                <Grid Grid.Row="1" Margin="20,0,20,20">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="1.5*"/>
-                                        <ColumnDefinition Width="20"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Left: Images List -->
-                                    <Border Grid.Column="0" Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="15">
-                                        <DataGrid x:Name="TabletImagesDataGrid" IsReadOnly="True" Cursor="Hand"
-                                                  AutoGenerateColumns="False"
-                                                  CanUserAddRows="False"
-                                                  CanUserDeleteRows="False"
-                                                  GridLinesVisibility="None"
-                                                  HeadersVisibility="Column"
-                                                  Background="Transparent"
-                                                  Foreground="White"
-                                                  BorderThickness="0"
-                                                  SelectionChanged="TabletImagesDataGrid_SelectionChanged"
-                                                  Style="{StaticResource ModernDataGridStyle}">
-                                            <DataGrid.ColumnHeaderStyle>
-                                                <Style TargetType="DataGridColumnHeader">
-                                                    <Setter Property="Background" Value="Transparent"/>
-                                                    <Setter Property="Foreground" Value="#ccc"/>
-                                                    <Setter Property="FontWeight" Value="Bold"/>
-                                                    <Setter Property="FontSize" Value="13"/>
-                                                    <Setter Property="Margin" Value="0,0,0,8"/>
-                                                </Style>
-                                            </DataGrid.ColumnHeaderStyle>
-                                            <DataGrid.RowStyle>
-                                                <Style TargetType="DataGridRow">
-                                                    <Setter Property="Background" Value="Transparent"/>
-                                                    <Setter Property="Foreground" Value="#ccc"/>
-                                                    <Setter Property="FontSize" Value="12"/>
-                                                    <Style.Triggers>
-                                                        <Trigger Property="IsSelected" Value="True">
-                                                            <Setter Property="Background" Value="#4aff2d55"/>
-                                                            <Setter Property="Foreground" Value="White"/>
-                                                        </Trigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </DataGrid.RowStyle>
-                                            <DataGrid.Columns>
-                                                <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*"/>
-                                                <DataGridTextColumn Header="Mărime" Binding="{Binding SizeDisplay}" Width="100"/>
-                                                <DataGridCheckBoxColumn Header="Locked" Binding="{Binding IsLocked}" Width="60"/>
-                                                <DataGridCheckBoxColumn Header="Visible" Binding="{Binding IsVisible}" Width="60"/>
-                                            </DataGrid.Columns>
-                                        </DataGrid>
-                                    </Border>
-
-                                    <!-- Right: Properties Panel -->
-                                    <Border Grid.Column="2" Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="15">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                            <StackPanel x:Name="TabletPropertiesPanel" IsEnabled="False">
-                                                <TextBlock Text="Proprietăți Imagine" FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
-                                                
-                                                <TextBlock x:Name="TabletNoSelectionText" Text="Selectează o imagine din listă pentru a o edita" FontSize="12" Foreground="#888" Margin="0,0,0,10" TextWrapping="Wrap"/>
-
-                                                <!-- Opacity -->
-                                                <TextBlock Text="Opacitate" Foreground="#ccc" FontSize="13" FontWeight="Bold" Margin="0,0,0,3"/>
-                                                <Grid Margin="0,0,0,10">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Slider x:Name="TabletImageOpacitySlider" Grid.Column="0" Minimum="0.1" Maximum="1.0" Value="1.0" TickFrequency="0.1" ValueChanged="TabletImageOpacitySlider_ValueChanged"/>
-                                                    <TextBlock x:Name="TabletImageOpacityValueText" Grid.Column="1" Text="100%" Foreground="#ccc" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                                </Grid>
-
-                                                <!-- Position -->
-                                                <TextBlock Text="Poziție pe Ecran (X, Y)" Foreground="#ccc" FontSize="13" FontWeight="Bold" Margin="0,0,0,4"/>
-                                                
-                                                <!-- Position X -->
-                                                <Grid Margin="0,0,0,6">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="X:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                    <Slider x:Name="TabletPosXSlider" Grid.Column="1" Minimum="0" Maximum="2560" Value="100" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletPosXSlider_ValueChanged"/>
-                                                    <TextBox x:Name="TabletPosXTextBox" Grid.Column="2" Text="100" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletPositionTextBox_TextChanged"/>
-                                                </Grid>
-
-                                                <!-- Position Y -->
-                                                <Grid Margin="0,0,0,12">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="Y:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                    <Slider x:Name="TabletPosYSlider" Grid.Column="1" Minimum="0" Maximum="1440" Value="100" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletPosYSlider_ValueChanged"/>
-                                                    <TextBox x:Name="TabletPosYTextBox" Grid.Column="2" Text="100" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletPositionTextBox_TextChanged"/>
-                                                </Grid>
-
-                                                <!-- Size -->
-                                                <Grid Margin="0,0,0,4">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="Dimensiuni Imagine" Foreground="#ccc" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="1" Content="&#x21BA; Mărime Originală" Style="{StaticResource TabletBtnStyle}" Height="22" Padding="6,0" FontSize="10" Foreground="#00E5FF" Click="TabletResetSizeBtn_Click" ToolTip="Resetează lățimea și înălțimea la rezoluția nativă a imaginii"/>
-                                                </Grid>
-
-                                                <!-- Width / Single Dimension Slider -->
-                                                <Grid x:Name="TabletImageWidthGrid" Margin="0,0,0,6">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock x:Name="TabletWidthLabel" Text="Dimensiune:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                    <Slider x:Name="TabletImageWidthSlider" Grid.Column="1" Minimum="30" Maximum="3840" Value="200" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletImageWidthSlider_ValueChanged"/>
-                                                    <TextBox x:Name="TabletImageWidthTextBox" Grid.Column="2" Text="200" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletSizeTextBox_TextChanged"/>
-                                                </Grid>
-
-                                                <!-- Subtext showing full dimensions when single slider is active -->
-                                                <TextBlock x:Name="TabletDimensionSubtext" Text="Dimensiune: 200 × 200 px" Foreground="#64748B" FontSize="11" Margin="2,0,0,6" Visibility="Collapsed"/>
-
-                                                <!-- Height Slider (shown only when MaintainAspectRatio is unchecked) -->
-                                                <Grid x:Name="TabletImageHeightGrid" Margin="0,0,0,10">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="Înălțime:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                    <Slider x:Name="TabletImageHeightSlider" Grid.Column="1" Minimum="30" Maximum="3840" Value="200" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletImageHeightSlider_ValueChanged"/>
-                                                    <TextBox x:Name="TabletImageHeightTextBox" Grid.Column="2" Text="200" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletSizeTextBox_TextChanged"/>
-                                                </Grid>
-                                                <CheckBox x:Name="TabletMaintainAspectCheckBox" Content="Menține aspect ratio" Foreground="#ccc" FontSize="12" Checked="TabletMaintainAspectCheckBox_Checked" Unchecked="TabletMaintainAspectCheckBox_Unchecked" Margin="0,0,0,8"/>
-                                                <CheckBox x:Name="TabletLockedCheckBox" Content="Locked (Click-through)" Foreground="#ccc" FontSize="12" Checked="TabletLockedCheckBox_Checked" Unchecked="TabletLockedCheckBox_Unchecked" Margin="0,0,0,15"/>
-
-                                                <!-- Delete Button -->
-                                                <Button x:Name="TabletRemoveImageBtn" Content="🗑️ Șterge Imagine" Style="{StaticResource TabletBtnStyle}" Background="#2Aef4444" Click="TabletRemoveImageBtn_Click"/>
+                                        <!-- Header &amp; Back Button -->
+                                        <StackPanel Grid.Row="0">
+                                            <Button Content="← Înapoi" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Padding="10,6" Margin="0,0,0,14" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="HomeBtn_Click"/>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0,0,0">
+                                                <Border Background="#1A00E5FF" BorderBrush="#3300E5FF" BorderThickness="1" CornerRadius="8" Width="34" Height="34" Margin="0,0,10,0">
+                                                    <TextBlock Text="🛠️" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="MDTab-Tools" FontSize="14.5" FontWeight="Bold" Foreground="White"/>
+                                                    <TextBlock Text="Utilitare MDTab" FontSize="10.5" Foreground="#64748B"/>
+                                                </StackPanel>
                                             </StackPanel>
-                                        </ScrollViewer>
-                                    </Border>
-                                </Grid>
-                            </Grid>
+                                        </StackPanel>
 
-                            <!-- KEYBINDS TAB CONTENT -->
-                            <Grid x:Name="KeybindsTabContent" Visibility="Collapsed" Background="#0f0f1a">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
+                                        <!-- Navigation Buttons -->
+                                        <StackPanel Grid.Row="2">
+                                            <TextBlock Text="SECȚIUNI" Foreground="#475569" FontSize="10" FontWeight="ExtraBold" Margin="4,0,0,8"/>
 
-                                <!-- Header Area -->
-                                <Grid Grid.Row="0" Margin="20,20,20,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button Grid.Column="0" Content="← Înapoi" ToolTip="Înapoi la ecranul principal (Desktop)" Style="{StaticResource TabletBtnStyle}" Background="#1E293B" Foreground="#00E5FF" BorderBrush="#334155" BorderThickness="1" Padding="10,4" Margin="0,0,14,0" Click="HomeBtn_Click" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="Keybinds Manager" FontSize="22" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <CheckBox x:Name="TabletGlobalKeybindsEnabledCheckBox" Content="Global Enabled" Foreground="#ccc" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Checked="TabletGlobalKeybinds_Checked" Unchecked="TabletGlobalKeybinds_Unchecked"/>
-                                        <CheckBox x:Name="TabletGlobalSoundsEnabledCheckBox" Content="Enable Sounds" Foreground="#ccc" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Checked="TabletGlobalSounds_Checked" Unchecked="TabletGlobalSounds_Unchecked"/>
-                                        <Button x:Name="TabletAddKeybindBtn" Content="➕ Adaugă Keybind" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletAddKeybindBtn_Click"/>
-                                    </StackPanel>
-                                </Grid>
+                                            <!-- Keybinds Nav Button -->
+                                            <Button x:Name="ToolsNavKeybindsBtn" Style="{StaticResource TabletBtnStyle}" Height="40" Padding="12,0" Margin="0,0,0,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Cursor="Hand" Click="ToolsNavKeybindsBtn_Click">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="⌨️" FontSize="14" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Keybinds" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
 
-                                <!-- Two-Column Content -->
+                                            <!-- Overlays Nav Button -->
+                                            <Button x:Name="ToolsNavOverlaysBtn" Style="{StaticResource TabletBtnStyle}" Height="40" Padding="12,0" Margin="0,0,0,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Cursor="Hand" Click="ToolsNavOverlaysBtn_Click">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="🖼️" FontSize="14" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Overlays" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+
+                                        <!-- Footer Info Badge -->
+                                        <Border Grid.Row="4" Background="#16162a" BorderBrush="#20203a" BorderThickness="1" CornerRadius="10" Padding="10">
+                                            <StackPanel>
+                                                <TextBlock Text="MDTab-Tools v2.6.5" Foreground="#94a3b8" FontSize="10.5" FontWeight="Bold"/>
+                                                <TextBlock Text="Modificările se salvează automat." Foreground="#64748B" FontSize="9.5" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Right Content Area -->
+                                <Grid Grid.Column="1">
+                                    <!-- 1. KEYBINDS VIEW -->
+                                    <Grid x:Name="ToolsKeybindsView" Visibility="Visible">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Header Area -->
+                                        <Grid Grid.Row="0" Margin="20,16,20,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Keybinds Manager" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                                                <TextBlock Text="Configurează macro-uri și taste rapide" FontSize="11" Foreground="#64748B" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <CheckBox x:Name="TabletGlobalKeybindsEnabledCheckBox" Content="Global Enabled" Foreground="#ccc" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Checked="TabletGlobalKeybinds_Checked" Unchecked="TabletGlobalKeybinds_Unchecked"/>
+                                                <CheckBox x:Name="TabletGlobalSoundsEnabledCheckBox" Content="Enable Sounds" Foreground="#ccc" FontSize="13" VerticalAlignment="Center" Margin="0,0,15,0" Checked="TabletGlobalSounds_Checked" Unchecked="TabletGlobalSounds_Unchecked"/>
+                                                <Button x:Name="TabletAddKeybindBtn" Content="➕ Adaugă Keybind" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletAddKeybindBtn_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+
                                 <Grid Grid.Row="1" Margin="20,0,20,20">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="1.5*"/>
@@ -1109,8 +990,176 @@
                                         </ScrollViewer>
                                     </Border>
                                 </Grid>
-                            </Grid>
+                                    </Grid>
 
+                                    <!-- 2. OVERLAYS VIEW -->
+                                    <Grid x:Name="ToolsOverlaysView" Visibility="Collapsed">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Header Area -->
+                                        <Grid Grid.Row="0" Margin="20,16,20,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Overlays Controller" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                                                <TextBlock Text="Gestionează imaginile și poziționarea pe ecran" FontSize="11" Foreground="#64748B" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button x:Name="TabletAddImageBtn" Content="➕ Adaugă Imagine" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletAddImageBtn_Click" Margin="0,0,8,0"/>
+                                                <Button x:Name="TabletToggleOverlaysBtn" Content="👁️ Afișează / Ascunde Overlays" Style="{StaticResource TabletBtnStyle}" Padding="12,6" Click="TabletToggleOverlaysBtn_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                <Grid Grid.Row="1" Margin="20,0,20,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.5*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Left: Images List -->
+                                    <Border Grid.Column="0" Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="15">
+                                        <DataGrid x:Name="TabletImagesDataGrid" IsReadOnly="True" Cursor="Hand"
+                                                  AutoGenerateColumns="False"
+                                                  CanUserAddRows="False"
+                                                  CanUserDeleteRows="False"
+                                                  GridLinesVisibility="None"
+                                                  HeadersVisibility="Column"
+                                                  Background="Transparent"
+                                                  Foreground="White"
+                                                  BorderThickness="0"
+                                                  SelectionChanged="TabletImagesDataGrid_SelectionChanged"
+                                                  Style="{StaticResource ModernDataGridStyle}">
+                                            <DataGrid.ColumnHeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Foreground" Value="#ccc"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                    <Setter Property="FontSize" Value="13"/>
+                                                    <Setter Property="Margin" Value="0,0,0,8"/>
+                                                </Style>
+                                            </DataGrid.ColumnHeaderStyle>
+                                            <DataGrid.RowStyle>
+                                                <Style TargetType="DataGridRow">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="Foreground" Value="#ccc"/>
+                                                    <Setter Property="FontSize" Value="12"/>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter Property="Background" Value="#4aff2d55"/>
+                                                            <Setter Property="Foreground" Value="White"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DataGrid.RowStyle>
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Nume" Binding="{Binding Name}" Width="*"/>
+                                                <DataGridTextColumn Header="Mărime" Binding="{Binding SizeDisplay}" Width="100"/>
+                                                <DataGridCheckBoxColumn Header="Locked" Binding="{Binding IsLocked}" Width="60"/>
+                                                <DataGridCheckBoxColumn Header="Visible" Binding="{Binding IsVisible}" Width="60"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Border>
+
+                                    <!-- Right: Properties Panel -->
+                                    <Border Grid.Column="2" Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="15">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <StackPanel x:Name="TabletPropertiesPanel" IsEnabled="False">
+                                                <TextBlock Text="Proprietăți Imagine" FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
+                                                
+                                                <TextBlock x:Name="TabletNoSelectionText" Text="Selectează o imagine din listă pentru a o edita" FontSize="12" Foreground="#888" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+                                                <!-- Opacity -->
+                                                <TextBlock Text="Opacitate" Foreground="#ccc" FontSize="13" FontWeight="Bold" Margin="0,0,0,3"/>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Slider x:Name="TabletImageOpacitySlider" Grid.Column="0" Minimum="0.1" Maximum="1.0" Value="1.0" TickFrequency="0.1" ValueChanged="TabletImageOpacitySlider_ValueChanged"/>
+                                                    <TextBlock x:Name="TabletImageOpacityValueText" Grid.Column="1" Text="100%" Foreground="#ccc" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <!-- Position -->
+                                                <TextBlock Text="Poziție pe Ecran (X, Y)" Foreground="#ccc" FontSize="13" FontWeight="Bold" Margin="0,0,0,4"/>
+                                                
+                                                <!-- Position X -->
+                                                <Grid Margin="0,0,0,6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="X:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <Slider x:Name="TabletPosXSlider" Grid.Column="1" Minimum="0" Maximum="2560" Value="100" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletPosXSlider_ValueChanged"/>
+                                                    <TextBox x:Name="TabletPosXTextBox" Grid.Column="2" Text="100" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletPositionTextBox_TextChanged"/>
+                                                </Grid>
+
+                                                <!-- Position Y -->
+                                                <Grid Margin="0,0,0,12">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Y:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <Slider x:Name="TabletPosYSlider" Grid.Column="1" Minimum="0" Maximum="1440" Value="100" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletPosYSlider_ValueChanged"/>
+                                                    <TextBox x:Name="TabletPosYTextBox" Grid.Column="2" Text="100" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletPositionTextBox_TextChanged"/>
+                                                </Grid>
+
+                                                <!-- Size -->
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Dimensiuni Imagine" Foreground="#ccc" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="1" Content="&#x21BA; Mărime Originală" Style="{StaticResource TabletBtnStyle}" Height="22" Padding="6,0" FontSize="10" Foreground="#00E5FF" Click="TabletResetSizeBtn_Click" ToolTip="Resetează lățimea și înălțimea la rezoluția nativă a imaginii"/>
+                                                </Grid>
+
+                                                <!-- Width / Single Dimension Slider -->
+                                                <Grid x:Name="TabletImageWidthGrid" Margin="0,0,0,6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="TabletWidthLabel" Text="Dimensiune:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <Slider x:Name="TabletImageWidthSlider" Grid.Column="1" Minimum="30" Maximum="3840" Value="200" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletImageWidthSlider_ValueChanged"/>
+                                                    <TextBox x:Name="TabletImageWidthTextBox" Grid.Column="2" Text="200" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletSizeTextBox_TextChanged"/>
+                                                </Grid>
+
+                                                <!-- Subtext showing full dimensions when single slider is active -->
+                                                <TextBlock x:Name="TabletDimensionSubtext" Text="Dimensiune: 200 × 200 px" Foreground="#64748B" FontSize="11" Margin="2,0,0,6" Visibility="Collapsed"/>
+
+                                                <!-- Height Slider (shown only when MaintainAspectRatio is unchecked) -->
+                                                <Grid x:Name="TabletImageHeightGrid" Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Înălțime:" Foreground="#94a3b8" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <Slider x:Name="TabletImageHeightSlider" Grid.Column="1" Minimum="30" Maximum="3840" Value="200" SmallChange="5" LargeChange="50" VerticalAlignment="Center" ValueChanged="TabletImageHeightSlider_ValueChanged"/>
+                                                    <TextBox x:Name="TabletImageHeightTextBox" Grid.Column="2" Text="200" Width="55" Height="26" Margin="6,0,0,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletSizeTextBox_TextChanged"/>
+                                                </Grid>
+                                                <CheckBox x:Name="TabletMaintainAspectCheckBox" Content="Menține aspect ratio" Foreground="#ccc" FontSize="12" Checked="TabletMaintainAspectCheckBox_Checked" Unchecked="TabletMaintainAspectCheckBox_Unchecked" Margin="0,0,0,8"/>
+                                                <CheckBox x:Name="TabletLockedCheckBox" Content="Locked (Click-through)" Foreground="#ccc" FontSize="12" Checked="TabletLockedCheckBox_Checked" Unchecked="TabletLockedCheckBox_Unchecked" Margin="0,0,0,15"/>
+
+                                                <!-- Delete Button -->
+                                                <Button x:Name="TabletRemoveImageBtn" Content="🗑️ Șterge Imagine" Style="{StaticResource TabletBtnStyle}" Background="#2Aef4444" Click="TabletRemoveImageBtn_Click"/>
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
                             <!-- SETTINGS TAB CONTENT -->
                             <Grid x:Name="SettingsTabContent" Visibility="Collapsed" Background="#0f0f1a">
                                 <Grid.RowDefinitions>
@@ -1315,7 +1364,7 @@
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock Text="🚀 Versiune &amp; Actualizări:" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                                     <Border CornerRadius="4" Background="#1A00E5FF" Padding="6,2" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.4" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
+                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.5" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
                                                     </Border>
                                                     <TextBlock x:Name="SettingsUpdateStatusText" Text="Verificare actualizări la pornire..." Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
                                                 </StackPanel>

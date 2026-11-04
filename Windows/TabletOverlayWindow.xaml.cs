@@ -1937,8 +1937,8 @@ public partial class TabletOverlayWindow : Window
 
         DesktopGrid.Visibility = Visibility.Collapsed;
         WebTabContent.Visibility = Visibility.Collapsed;
-        OverlaysTabContent.Visibility = Visibility.Collapsed;
-        KeybindsTabContent.Visibility = Visibility.Collapsed;
+        ToolsTabContent.Visibility = Visibility.Collapsed;
+
         SettingsTabContent.Visibility = Visibility.Collapsed;
 
         appGrid.Visibility = Visibility.Visible;
@@ -1966,8 +1966,8 @@ public partial class TabletOverlayWindow : Window
         }
 
         WebTabContent.Visibility = Visibility.Collapsed;
-        OverlaysTabContent.Visibility = Visibility.Collapsed;
-        KeybindsTabContent.Visibility = Visibility.Collapsed;
+        ToolsTabContent.Visibility = Visibility.Collapsed;
+
         SettingsTabContent.Visibility = Visibility.Collapsed;
         NavToolbarBorder.Visibility = Visibility.Collapsed;
         TitleBarHomeBtn.Visibility = Visibility.Collapsed;
@@ -2024,16 +2024,71 @@ public partial class TabletOverlayWindow : Window
         EnsureWebViewInitialized("https://gov.b-zone.ro/");
     }
 
-    private void OverlaysApp_Click(object sender, RoutedEventArgs e)
+    public void OpenTools(string targetTab = "Keybinds")
     {
-        OpenApp(OverlaysTabContent, false);
+        OpenApp(ToolsTabContent, false);
+        SetToolsNavigation(targetTab);
     }
 
-    private void KeybindsApp_Click(object sender, RoutedEventArgs e)
+    private void ToolsApp_Click(object sender, RoutedEventArgs e)
     {
-        OpenApp(KeybindsTabContent, false);
+        OpenTools("Keybinds");
     }
 
+    private void ToolsNavKeybindsBtn_Click(object sender, RoutedEventArgs e)
+    {
+        SetToolsNavigation("Keybinds");
+    }
+
+    private void ToolsNavOverlaysBtn_Click(object sender, RoutedEventArgs e)
+    {
+        SetToolsNavigation("Overlays");
+    }
+
+    private void SetToolsNavigation(string tab)
+    {
+        bool isKeybinds = tab == "Keybinds";
+
+        if (ToolsKeybindsView != null)
+            ToolsKeybindsView.Visibility = isKeybinds ? Visibility.Visible : Visibility.Collapsed;
+
+        if (ToolsOverlaysView != null)
+            ToolsOverlaysView.Visibility = isKeybinds ? Visibility.Collapsed : Visibility.Visible;
+
+        if (ToolsNavKeybindsBtn != null)
+        {
+            ToolsNavKeybindsBtn.Background = isKeybinds ? new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0xE5, 0xFF)) : new SolidColorBrush(Color.FromArgb(0x0D, 0xFF, 0xFF, 0xFF));
+            ToolsNavKeybindsBtn.BorderBrush = isKeybinds ? new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xE5, 0xFF)) : Brushes.Transparent;
+            ToolsNavKeybindsBtn.BorderThickness = isKeybinds ? new Thickness(1) : new Thickness(0);
+            ToolsNavKeybindsBtn.Foreground = isKeybinds ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
+        }
+
+        if (ToolsNavOverlaysBtn != null)
+        {
+            ToolsNavOverlaysBtn.Background = !isKeybinds ? new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0xE5, 0xFF)) : new SolidColorBrush(Color.FromArgb(0x0D, 0xFF, 0xFF, 0xFF));
+            ToolsNavOverlaysBtn.BorderBrush = !isKeybinds ? new SolidColorBrush(Color.FromArgb(0xFF, 0x00, 0xE5, 0xFF)) : Brushes.Transparent;
+            ToolsNavOverlaysBtn.BorderThickness = !isKeybinds ? new Thickness(1) : new Thickness(0);
+            ToolsNavOverlaysBtn.Foreground = !isKeybinds ? Brushes.White : new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8));
+        }
+
+        if (isKeybinds)
+        {
+            if (TabletKeybindsDataGrid != null && TabletKeybindsDataGrid.SelectedIndex == -1 && _tabletKeybinds.Count > 0)
+            {
+                TabletKeybindsDataGrid.SelectedIndex = 0;
+            }
+        }
+        else
+        {
+            if (TabletImagesDataGrid != null && TabletImagesDataGrid.SelectedIndex == -1 && _images.Count > 0)
+            {
+                TabletImagesDataGrid.SelectedIndex = 0;
+            }
+        }
+    }
+
+    private void OverlaysApp_Click(object sender, RoutedEventArgs e) => OpenTools("Overlays");
+    private void KeybindsApp_Click(object sender, RoutedEventArgs e) => OpenTools("Keybinds");
     private void SettingsApp_Click(object sender, RoutedEventArgs e)
     {
         OpenApp(SettingsTabContent, false);
