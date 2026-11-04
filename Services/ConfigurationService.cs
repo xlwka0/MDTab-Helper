@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using MDHelper.Models;
@@ -30,8 +31,68 @@ public class ConfigurationService
         };
     }
 
+    public static void EnsureDefaultAssets()
+    {
+        try
+        {
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string assetsFolder = Path.Combine(appData, "MDTab-Helper", "Assets");
+            Directory.CreateDirectory(assetsFolder);
+
+            string targetFile = Path.Combine(assetsFolder, "coduri_radio.png");
+            if (!File.Exists(targetFile) || new FileInfo(targetFile).Length == 0)
+            {
+                // First check if it exists in base directory (e.g. dev build or unpacked)
+                string localFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "coduri_radio.png");
+                if (File.Exists(localFile))
+                {
+                    File.Copy(localFile, targetFile, true);
+                }
+                else
+                {
+                    Stream? stream = null;
+                    try
+                    {
+                        var sri = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/MDTab-Helper;component/Assets/coduri_radio.png", UriKind.Absolute));
+                        if (sri != null) stream = sri.Stream;
+                    }
+                    catch { }
+
+                    if (stream == null)
+                    {
+                        try
+                        {
+                            if (System.Windows.Application.ResourceAssembly == null)
+                            {
+                                System.Windows.Application.ResourceAssembly = typeof(ConfigurationService).Assembly;
+                            }
+                            var sri = System.Windows.Application.GetResourceStream(new Uri("/Assets/coduri_radio.png", UriKind.Relative));
+                            if (sri != null) stream = sri.Stream;
+                        }
+                        catch { }
+                    }
+
+                    if (stream != null)
+                    {
+                        using (stream)
+                        using (var outStream = File.Create(targetFile))
+                        {
+                            stream.CopyTo(outStream);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to extract default assets: {ex.Message}");
+        }
+    }
+
     public AppConfiguration LoadConfiguration()
     {
+        EnsureDefaultAssets();
+
         lock (_lock)
         {
             AppConfiguration? config = null;
@@ -83,7 +144,23 @@ public class ConfigurationService
                 }
             }
 
-            return config ?? new AppConfiguration();
+            config ??= new AppConfiguration();
+
+            // If config has no images at all (brand new setup or empty images list), add default radio codes overlay
+            if (config.Images == null || config.Images.Count == 0)
+            {
+                config.Images = new List<OverlayImage> { AppConfiguration.CreateDefaultRadioCodesOverlay() };
+            }
+
+            // Ensure default keybinds list only has 1 default if user hasn't customized the original 2 placeholders
+            if (config.Keybind?.Entries != null && config.Keybind.Entries.Count == 2
+                && config.Keybind.Entries[0].Name == "Keybind 1" && config.Keybind.Entries[0].Script == "/me exemplu 1"
+                && config.Keybind.Entries[1].Name == "Keybind 2" && config.Keybind.Entries[1].Script == "/me exemplu 2")
+            {
+                config.Keybind.Entries.RemoveAt(1);
+            }
+
+            return config;
         }
     }
 
@@ -133,6 +210,7 @@ public class ConfigurationService
     {
         try
         {
+            EnsureDefaultAssets();
             var json = File.ReadAllText(path, System.Text.Encoding.UTF8);
             return JsonSerializer.Deserialize<AppConfiguration>(json, _jsonOptions);
         }

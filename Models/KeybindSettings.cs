@@ -1,4 +1,4 @@
-﻿namespace MDHelper.Models;
+namespace MDHelper.Models;
 
 public class KeybindEntry
 {
@@ -38,7 +38,7 @@ public class KeybindSettings
     public List<KeybindEntry> Entries { get; set; } = new()
     {
         new() { Name = "Keybind 1", HotkeyVirtualKey = 0x31, Script = "/me exemplu 1" }, // '1'
-        new() { Name = "Keybind 2", HotkeyVirtualKey = 0x32, Script = "/me exemplu 2" }, // '2'
+
     };
 
     public WindowToggleSettings WindowToggle { get; set; } = new();

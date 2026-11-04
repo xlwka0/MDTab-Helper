@@ -1,4 +1,6 @@
+using System;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 
@@ -28,7 +30,16 @@ public class OverlayImage : INotifyPropertyChanged
     public string FilePath
     {
         get => _filePath;
-        set { _filePath = value; Name = System.IO.Path.GetFileName(value); OnPropertyChanged(); }
+        set
+        {
+            _filePath = value;
+            if (string.IsNullOrWhiteSpace(_name))
+            {
+                _name = System.IO.Path.GetFileName(value);
+                OnPropertyChanged(nameof(Name));
+            }
+            OnPropertyChanged();
+        }
     }
 
     public string Name
@@ -96,8 +107,38 @@ public class OverlayImage : INotifyPropertyChanged
     public string GetAbsoluteFilePath()
     {
         if (string.IsNullOrWhiteSpace(_filePath)) return string.Empty;
-        if (System.IO.Path.IsPathRooted(_filePath)) return _filePath;
-        return System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _filePath);
+
+        if (Path.IsPathRooted(_filePath))
+        {
+            if (File.Exists(_filePath)) return _filePath;
+
+            string fileName = Path.GetFileName(_filePath);
+            string appDataAssetsFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MDTab-Helper", "Assets", fileName);
+            if (File.Exists(appDataAssetsFallback)) return appDataAssetsFallback;
+
+            string appDataRootFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MDTab-Helper", fileName);
+            if (File.Exists(appDataRootFallback)) return appDataRootFallback;
+
+            return _filePath;
+        }
+
+        // Relative path: check under %APPDATA%\MDTab-Helper\
+        string appDataCombined = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MDTab-Helper", _filePath);
+        if (File.Exists(appDataCombined)) return appDataCombined;
+
+        // Relative path: check under %APPDATA%\MDTab-Helper\Assets\
+        string fileNameRel = Path.GetFileName(_filePath);
+        string appDataAssetsCombined = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MDTab-Helper", "Assets", fileNameRel);
+        if (File.Exists(appDataAssetsCombined)) return appDataAssetsCombined;
+
+        // Relative path: check under AppDomain.CurrentDomain.BaseDirectory
+        string baseDirCombined = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _filePath);
+        if (File.Exists(baseDirCombined)) return baseDirCombined;
+
+        string baseDirAssetsCombined = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", fileNameRel);
+        if (File.Exists(baseDirAssetsCombined)) return baseDirAssetsCombined;
+
+        return appDataCombined;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
