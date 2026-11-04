@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -230,7 +230,7 @@ public partial class TabletOverlayWindow : Window
 
             var envOptions = new CoreWebView2EnvironmentOptions
             {
-                AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+                AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist"
             };
             var env = await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
             await TabletWebView.EnsureCoreWebView2Async(env);
@@ -241,6 +241,24 @@ public partial class TabletOverlayWindow : Window
                     try {
                         Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
                         Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+                        const origMatch = window.matchMedia;
+                        if (origMatch) {
+                            window.matchMedia = function(q) {
+                                if (typeof q === 'string' && q.includes('prefers-reduced-motion')) {
+                                    return {
+                                        matches: false,
+                                        media: q,
+                                        onchange: null,
+                                        addListener: function() {},
+                                        removeListener: function() {},
+                                        addEventListener: function() {},
+                                        removeEventListener: function() {},
+                                        dispatchEvent: function() { return false; }
+                                    };
+                                }
+                                return origMatch.call(window, q);
+                            };
+                        }
                     } catch(e) {}
                 ");
             }
@@ -259,6 +277,12 @@ public partial class TabletOverlayWindow : Window
             TabletWebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
             TabletWebView.CoreWebView2.SourceChanged += CoreWebView2_SourceChanged;
             TabletWebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+            try
+            {
+                TabletWebView.CoreWebView2.AddWebResourceRequestedFilter("https://md.b-zone.ro/api/*", Microsoft.Web.WebView2.Core.CoreWebView2WebResourceContext.All);
+                TabletWebView.CoreWebView2.WebResourceResponseReceived += CoreWebView2_WebResourceResponseReceived;
+            }
+            catch {}
 
             // Check connection and refresh Duty & Bandages as soon as browser engine is ready
             _ = CheckAndRefreshDutyAsync(showLoading: false);
@@ -299,6 +323,27 @@ public partial class TabletOverlayWindow : Window
         {
             _ = CheckAndRefreshDutyAsync(showLoading: false);
         }
+    }
+
+    private void CoreWebView2_WebResourceResponseReceived(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebResourceResponseReceivedEventArgs e)
+    {
+        try
+        {
+            string uri = e.Request.Uri;
+            if (uri.Contains("b-zone.ro", StringComparison.OrdinalIgnoreCase))
+            {
+                if (uri.Contains("/api/auth", StringComparison.OrdinalIgnoreCase) ||
+                    uri.Contains("/api/duty", StringComparison.OrdinalIgnoreCase) ||
+                    uri.Contains("/api/bandaje", StringComparison.OrdinalIgnoreCase) ||
+                    uri.Contains("/api/profil", StringComparison.OrdinalIgnoreCase) ||
+                    uri.Contains("/api/homepage", StringComparison.OrdinalIgnoreCase) ||
+                    uri.Contains("/login", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = Dispatcher.InvokeAsync(() => CheckAndRefreshDutyAsync(showLoading: false));
+                }
+            }
+        }
+        catch {}
     }
 
     private void CoreWebView2_SourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
@@ -2348,7 +2393,7 @@ public partial class TabletOverlayWindow : Window
                     string userFolder = System.IO.Path.Combine(appData, "MDTab-Helper", "TabletCache");
                     var envOptions = new CoreWebView2EnvironmentOptions
                     {
-                        AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+                        AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist"
                     };
                     var env = await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
                     await TabletWebView.EnsureCoreWebView2Async(env);
@@ -2519,7 +2564,7 @@ public partial class TabletOverlayWindow : Window
         }
     }
 
-    private void DutyActivateSyncBtn_Click(object sender, RoutedEventArgs e)
+    private async void DutyActivateSyncBtn_Click(object sender, RoutedEventArgs e)
     {
         if (!_settings.PanelSyncConsentGiven)
         {
@@ -2529,6 +2574,15 @@ public partial class TabletOverlayWindow : Window
         {
             OpenApp(WebTabContent, true);
             EnsureWebViewInitialized("https://md.b-zone.ro");
+            try
+            {
+                if (TabletWebView?.CoreWebView2 != null)
+                {
+                    await Task.Delay(400);
+                    await TabletWebView.CoreWebView2.ExecuteScriptAsync("try { window.dispatchEvent(new CustomEvent('open-visitor-hub')); } catch(e) {}");
+                }
+            }
+            catch {}
             _ = CheckAndRefreshDutyAsync(showLoading: true);
         }
     }
