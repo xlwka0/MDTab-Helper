@@ -150,45 +150,6 @@
             </Setter>
         </Style>
 
-        <!-- Duty Filter Chip Style -->
-        <Style x:Key="DutyFilterChipStyle" TargetType="RadioButton">
-            <Setter Property="Background" Value="#161F30"/>
-            <Setter Property="Foreground" Value="#94A3B8"/>
-            <Setter Property="BorderBrush" Value="#253247"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="9,3"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="ChipBorder" 
-                                Background="{TemplateBinding Background}" 
-                                BorderBrush="{TemplateBinding BorderBrush}" 
-                                BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="10" 
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ChipBorder" Property="BorderBrush" Value="#00E5FF"/>
-                                <Setter Property="Foreground" Value="White"/>
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="ChipBorder" Property="Background" Value="#1E293B"/>
-                                <Setter TargetName="ChipBorder" Property="BorderBrush" Value="#00E5FF"/>
-                                <Setter Property="Foreground" Value="#00E5FF"/>
-                                <Setter Property="FontWeight" Value="Bold"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <!-- Desktop App Button Style -->
         <Style x:Key="DesktopAppButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -313,7 +274,6 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <!-- Row 0: Badge & Actions -->
@@ -354,20 +314,6 @@
                                 <Button x:Name="DutySearchClearBtn" Grid.Column="2" Content="✕" Width="16" Height="16" Background="Transparent" Foreground="#94A3B8" BorderThickness="0" Cursor="Hand" Visibility="Collapsed" Click="DutySearchClearBtn_Click"/>
                             </Grid>
                         </Border>
-
-                        <!-- Row 2: Quick Filter Chips -->
-                        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,8,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton Content="Toți" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" IsChecked="True" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Directori" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Inspectori" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Primari" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Specialiști" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Rezidenți" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Stagiari" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                                <RadioButton Content="Asistenți" GroupName="DutyRankFilterGroup" Style="{StaticResource DutyFilterChipStyle}" Checked="DutyFilterRadio_Checked"/>
-                            </StackPanel>
-                        </ScrollViewer>
                     </Grid>
                 </Border>
 
@@ -565,7 +511,7 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.8" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.6.9" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
@@ -868,7 +814,7 @@
                                         <!-- Footer Info Badge -->
                                         <Border Grid.Row="4" Background="#16162a" BorderBrush="#20203a" BorderThickness="1" CornerRadius="10" Padding="10">
                                             <StackPanel>
-                                                <TextBlock Text="MDTab-Tools v2.6.8" Foreground="#94a3b8" FontSize="10.5" FontWeight="Bold"/>
+                                                <TextBlock Text="MDTab-Tools v2.6.9" Foreground="#94a3b8" FontSize="10.5" FontWeight="Bold"/>
                                                 <TextBlock Text="Modificările se salvează automat." Foreground="#64748B" FontSize="9.5" Margin="0,2,0,0" TextWrapping="Wrap"/>
                                             </StackPanel>
                                         </Border>
@@ -1451,7 +1397,7 @@
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock Text="🚀 Versiune &amp; Actualizări:" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                                     <Border CornerRadius="4" Background="#1A00E5FF" Padding="6,2" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.8" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
+                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.6.9" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
                                                     </Border>
                                                     <TextBlock x:Name="SettingsUpdateStatusText" Text="Verificare actualizări la pornire..." Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
                                                 </StackPanel>

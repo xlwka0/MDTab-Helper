@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -51,7 +51,6 @@ public partial class TabletOverlayWindow : Window
     private DispatcherTimer? _dutyToastTimer;
     private OnDutyResult? _currentDutyResult;
     private string _dutySearchText = string.Empty;
-    private string _dutyRankFilter = "Toți";
     private bool _isSidebarExpanded = false;
     private const double DutySidebarTotalWidth = 360;
     private readonly UpdateService _updateService = new();
@@ -2815,17 +2814,6 @@ public partial class TabletOverlayWindow : Window
         }
     }
 
-    private void DutyFilterRadio_Checked(object sender, RoutedEventArgs e)
-    {
-        if (DutyGroupsItemsControl == null) return;
-
-        if (sender is RadioButton rb && rb.Content != null)
-        {
-            _dutyRankFilter = rb.Content.ToString() ?? "Toți";
-            ApplyDutyFilterAndSearch();
-        }
-    }
-
     private void ApplyDutyFilterAndSearch()
     {
         if (DutyGroupsItemsControl == null) return;
@@ -2837,24 +2825,11 @@ public partial class TabletOverlayWindow : Window
         }
 
         var query = _dutySearchText.ToLowerInvariant();
-        var filter = _dutyRankFilter;
 
         var filteredGroups = new List<OnDutyGroup>();
 
         foreach (var group in _currentDutyResult.Groups)
         {
-            // Rank filter check (Asistent - Director)
-            if (filter != "Toți")
-            {
-                if ((filter == "Directori" || filter == "Director") && !group.Grad.Contains("Director", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Inspectori" || filter == "Medici Inspectori") && !group.Grad.Contains("Inspector", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Primari" || filter == "Medici Primari") && !group.Grad.Contains("Primar", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Specialiști" || filter == "Medici Specialiști") && !group.Grad.Contains("Speciali", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Rezidenți" || filter == "Medici Rezidenți") && !group.Grad.Contains("Reziden", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Stagiari" || filter == "Medici Stagiari") && !group.Grad.Contains("Stagiar", StringComparison.OrdinalIgnoreCase)) continue;
-                if ((filter == "Asistenți" || filter == "Asistenți Medicali") && !group.Grad.Contains("Asisten", StringComparison.OrdinalIgnoreCase)) continue;
-            }
-
             // Search query filter (Matches Name, Indicativ or CNP)
             var matchingDoctors = group.Doctors.Where(d =>
                 string.IsNullOrWhiteSpace(query) ||
