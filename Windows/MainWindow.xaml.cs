@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -268,6 +268,7 @@ public partial class MainWindow : Window
         {
             UpdatePropertiesPanel(image);
         }
+        _tabletWindow?.OnOverlayImagePositionChanged(image);
     }
 
     private void SaveConfigBtn_Click(object sender, RoutedEventArgs e)

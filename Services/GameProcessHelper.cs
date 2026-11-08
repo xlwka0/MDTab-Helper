@@ -233,6 +233,12 @@ public static class GameProcessHelper
 
             // Read the file with FileShare.ReadWrite so FiveM's logger is never blocked
             using var fs = new FileStream(latestLog.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            // Read only the tail (last 64 KB) of the log to prevent massive memory allocations every second
+            const int tailBytes = 65536;
+            if (fs.Length > tailBytes)
+            {
+                fs.Seek(-tailBytes, SeekOrigin.End);
+            }
             using var reader = new StreamReader(fs, Encoding.UTF8);
             string content = reader.ReadToEnd();
 

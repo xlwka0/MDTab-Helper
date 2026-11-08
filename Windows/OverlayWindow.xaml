@@ -12,7 +12,8 @@
         SnapsToDevicePixels="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
         MouseMove="Window_MouseMove"
-        MouseWheel="Window_MouseWheel">
+        MouseWheel="Window_MouseWheel"
+        KeyDown="Window_KeyDown">
 
     <Grid x:Name="MainGrid"
           Background="Transparent">

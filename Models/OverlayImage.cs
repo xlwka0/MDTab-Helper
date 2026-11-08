@@ -1,10 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 using System.Windows;
 
 namespace MDHelper.Models;
+
+public readonly record struct ImageStateSnapshot(double X, double Y, double Width, double Height, double Opacity);
 
 public class OverlayImage : INotifyPropertyChanged
 {
@@ -20,6 +25,73 @@ public class OverlayImage : INotifyPropertyChanged
     private bool _isLocked = false;
     private bool _maintainAspectRatio = true;
     private int _zIndex = 0;
+
+    [JsonIgnore]
+    private readonly Stack<ImageStateSnapshot> _undoHistory = new();
+
+    [JsonIgnore]
+    public bool CanUndo => _undoHistory.Count > 0;
+
+    public void PushUndoSnapshot()
+    {
+        PushUndoSnapshotExplicit(_x, _y, _width, _height, _opacity);
+    }
+
+    public void PushUndoSnapshotExplicit(double x, double y, double width, double height, double opacity)
+    {
+        if (width <= 0 || height <= 0) return;
+
+        // Skip pushing if identical to current top snapshot
+        if (_undoHistory.Count > 0)
+        {
+            var top = _undoHistory.Peek();
+            if (Math.Abs(top.X - x) < 0.5 &&
+                Math.Abs(top.Y - y) < 0.5 &&
+                Math.Abs(top.Width - width) < 0.5 &&
+                Math.Abs(top.Height - height) < 0.5 &&
+                Math.Abs(top.Opacity - opacity) < 0.01)
+            {
+                return;
+            }
+        }
+
+        // Keep maximum 30 snapshots in history
+        if (_undoHistory.Count >= 30)
+        {
+            var list = _undoHistory.ToList();
+            list.RemoveAt(list.Count - 1);
+            list.Reverse();
+            _undoHistory.Clear();
+            foreach (var item in list)
+            {
+                _undoHistory.Push(item);
+            }
+        }
+
+        _undoHistory.Push(new ImageStateSnapshot(x, y, width, height, opacity));
+        OnPropertyChanged(nameof(CanUndo));
+    }
+
+    public bool PerformUndo()
+    {
+        if (_undoHistory.Count == 0) return false;
+
+        var snap = _undoHistory.Pop();
+        _x = snap.X;
+        _y = snap.Y;
+        _width = snap.Width;
+        _height = snap.Height;
+        _opacity = snap.Opacity;
+
+        OnPropertyChanged(nameof(X));
+        OnPropertyChanged(nameof(Y));
+        OnPropertyChanged(nameof(Width));
+        OnPropertyChanged(nameof(Height));
+        OnPropertyChanged(nameof(SizeDisplay));
+        OnPropertyChanged(nameof(Opacity));
+        OnPropertyChanged(nameof(CanUndo));
+        return true;
+    }
 
     public string Id
     {

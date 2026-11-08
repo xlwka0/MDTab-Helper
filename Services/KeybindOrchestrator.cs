@@ -187,17 +187,19 @@ public sealed class KeybindOrchestrator : IDisposable
             return;
         }
 
-        if (!Settings.GlobalEnabled) return;
-
-        // Ensure custom keybinds only trigger when the game is the active foreground window
-        if (!GameProcessHelper.IsGameForeground()) return;
-
+        // Emergency STOP hotkey: must ALWAYS trigger to abort running sequences,
+        // even if focus temporarily shifted away from the game!
         if (hotkeyId == STOP_TOGGLE_HOTKEY_ID)
         {
             _runCts?.Cancel();
             SoundService.PlayKeybindStop();
             return;
         }
+
+        if (!Settings.GlobalEnabled) return;
+
+        // Ensure custom keybinds only trigger when the game is the active foreground window
+        if (!GameProcessHelper.IsGameForeground()) return;
 
         if (!_entryMap.TryGetValue(hotkeyId, out var entry)) return;
         if (!entry.Enabled) return;
@@ -284,6 +286,18 @@ public sealed class KeybindOrchestrator : IDisposable
         {
             string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MDTab-Helper");
             string file = System.IO.Path.Combine(dir, "keybind_debug.log");
+
+            // Rotate if larger than 1 MB to prevent unbounded file growth
+            if (System.IO.File.Exists(file))
+            {
+                var fi = new System.IO.FileInfo(file);
+                if (fi.Length > 1_048_576) // 1 MB
+                {
+                    string oldFile = System.IO.Path.Combine(dir, "keybind_debug.log.old");
+                    System.IO.File.Move(file, oldFile, overwrite: true);
+                }
+            }
+
             string line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message}{Environment.NewLine}";
             System.IO.File.AppendAllText(file, line);
         }

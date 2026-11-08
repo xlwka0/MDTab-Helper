@@ -41,7 +41,7 @@ public class OnDutyDoctor
         var lower = rank.ToLowerInvariant();
         if (lower.Contains("director"))
         {
-            if (lower.Contains("adjunct")) return 2;
+            if (lower.Contains("medical") || lower.Contains("adjunct")) return 2;
             return 1;
         }
         if (lower.Contains("inspector")) return 3;

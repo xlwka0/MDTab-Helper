@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -21,6 +22,7 @@ public partial class OverlayWindow : Window
     private double _resizeStartWidth;
     private double _resizeStartHeight;
     private double _aspectRatio = 1;
+    private DateTime _lastWheelSnapshotTime = DateTime.MinValue;
 
     public OverlayImage ImageData => _imageData;
 
@@ -70,7 +72,12 @@ public partial class OverlayWindow : Window
                 _imageData.Height = _imageData.Width / _aspectRatio;
             }
 
-                        UpdateWindowPosition();
+            double screenW = SystemParameters.PrimaryScreenWidth > 0 ? SystemParameters.PrimaryScreenWidth : 1920;
+            double screenH = SystemParameters.PrimaryScreenHeight > 0 ? SystemParameters.PrimaryScreenHeight : 1080;
+            _imageData.X = Math.Clamp(_imageData.X, 0, Math.Max(0, screenW - _imageData.Width));
+            _imageData.Y = Math.Clamp(_imageData.Y, 0, Math.Max(0, screenH - _imageData.Height));
+
+            UpdateWindowPosition();
         }
         catch (Exception ex)
         {
@@ -127,6 +134,12 @@ public partial class OverlayWindow : Window
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_imageData.IsLocked) return;
+
+        double preDragX = _imageData.X;
+        double preDragY = _imageData.Y;
+        double preDragW = _imageData.Width;
+        double preDragH = _imageData.Height;
+        double preDragOp = _imageData.Opacity;
         
         try
         {
@@ -137,12 +150,23 @@ public partial class OverlayWindow : Window
             // Ignore if mouse button state changed
         }
 
+        double screenW = SystemParameters.PrimaryScreenWidth > 0 ? SystemParameters.PrimaryScreenWidth : 1920;
+        double screenH = SystemParameters.PrimaryScreenHeight > 0 ? SystemParameters.PrimaryScreenHeight : 1080;
+
         _isUpdatingFromWindow = true;
         try
         {
+            Left = Math.Clamp(Left, 0, Math.Max(0, screenW - Width));
+            Top = Math.Clamp(Top, 0, Math.Max(0, screenH - Height));
+
             _imageData.X = Left;
             _imageData.Y = Top;
             SavePosition();
+
+            if (Math.Abs(_imageData.X - preDragX) > 1 || Math.Abs(_imageData.Y - preDragY) > 1)
+            {
+                _imageData.PushUndoSnapshotExplicit(preDragX, preDragY, preDragW, preDragH, preDragOp);
+            }
         }
         finally
         {
@@ -159,15 +183,26 @@ public partial class OverlayWindow : Window
     {
         if (_imageData == null || _imageData.IsLocked) return;
 
+        if ((DateTime.UtcNow - _lastWheelSnapshotTime).TotalMilliseconds > 800)
+        {
+            _imageData.PushUndoSnapshot();
+        }
+        _lastWheelSnapshotTime = DateTime.UtcNow;
+
         var mousePos = e.GetPosition(this);
         double mouseX = mousePos.X;
         double mouseY = mousePos.Y;
 
+        double screenW = SystemParameters.PrimaryScreenWidth > 0 ? SystemParameters.PrimaryScreenWidth : 1920;
+        double screenH = SystemParameters.PrimaryScreenHeight > 0 ? SystemParameters.PrimaryScreenHeight : 1080;
+
         var delta = e.Delta > 0 ? 1.05 : 0.95;
-        var newWidth = Width * delta;
+        var newWidth = Math.Clamp(Width * delta, 40, screenW);
         var newHeight = _imageData.MaintainAspectRatio 
-            ? newWidth / _aspectRatio 
-            : Height * delta;
+            ? Math.Clamp(newWidth / _aspectRatio, 40, screenH)
+            : Math.Clamp(Height * delta, 40, screenH);
+
+        if (Math.Abs(newWidth - Width) < 0.5 && Math.Abs(newHeight - Height) < 0.5) return;
 
         // Anchor calculations to scale centered on the mouse cursor
         double x_rel = mouseX / Width;
@@ -176,8 +211,11 @@ public partial class OverlayWindow : Window
         _isUpdatingFromWindow = true;
         try
         {
-            Left = Left - (newWidth - Width) * x_rel;
-            Top = Top - (newHeight - Height) * y_rel;
+            double newLeft = Left - (newWidth - Width) * x_rel;
+            double newTop = Top - (newHeight - Height) * y_rel;
+
+            Left = Math.Clamp(newLeft, 0, Math.Max(0, screenW - newWidth));
+            Top = Math.Clamp(newTop, 0, Math.Max(0, screenH - newHeight));
             Width = newWidth;
             Height = newHeight;
 
@@ -193,7 +231,6 @@ public partial class OverlayWindow : Window
         }
     }
 
-    
     private void ResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_imageData.IsLocked) return;
@@ -208,6 +245,10 @@ public partial class OverlayWindow : Window
     private void ResizeHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         _isResizing = false;
+        if (Math.Abs(Width - _resizeStartWidth) > 2 || Math.Abs(Height - _resizeStartHeight) > 2)
+        {
+            _imageData.PushUndoSnapshotExplicit(_imageData.X, _imageData.Y, _resizeStartWidth, _resizeStartHeight, _imageData.Opacity);
+        }
         SavePosition();
         e.Handled = true;
     }
@@ -220,15 +261,31 @@ public partial class OverlayWindow : Window
         var dx = pos.X - _resizeStart.X;
         var dy = pos.Y - _resizeStart.Y;
 
-        var newWidth = Math.Max(50, _resizeStartWidth + dx);
+        double screenW = SystemParameters.PrimaryScreenWidth > 0 ? SystemParameters.PrimaryScreenWidth : 1920;
+        double screenH = SystemParameters.PrimaryScreenHeight > 0 ? SystemParameters.PrimaryScreenHeight : 1080;
+
+        var newWidth = Math.Clamp(_resizeStartWidth + dx, 50, Math.Max(50, screenW - Left));
         var newHeight = _imageData.MaintainAspectRatio
             ? newWidth / _aspectRatio
-            : Math.Max(50, _resizeStartHeight + dy);
+            : Math.Clamp(_resizeStartHeight + dy, 50, Math.Max(50, screenH - Top));
 
         Width = newWidth;
         Height = newHeight;
         _imageData.Width = newWidth;
         _imageData.Height = newHeight;
+    }
+
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Z && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            if (_imageData != null && _imageData.CanUndo)
+            {
+                _imageData.PerformUndo();
+                SavePosition();
+                e.Handled = true;
+            }
+        }
     }
 
     private void LockButton_Click(object sender, RoutedEventArgs e)
@@ -242,7 +299,6 @@ public partial class OverlayWindow : Window
         Close();
     }
 
-    
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_imageData != null)
