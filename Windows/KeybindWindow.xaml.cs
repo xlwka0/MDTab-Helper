@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -370,6 +370,12 @@ public class KeybindViewModel : INotifyPropertyChanged
             return $"Num {name[6]}";
         return name switch
         {
+            "Next" => "PageDown",
+            "PageDown" => "PageDown",
+            "Prior" => "PageUp",
+            "PageUp" => "PageUp",
+            "Snapshot" => "PrintScreen",
+            "Scroll" => "ScrollLock",
             "Return" => "Enter",
             "Back" => "Backspace",
             "Capital" => "CapsLock",
