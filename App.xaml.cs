@@ -77,6 +77,13 @@ public partial class App : Application
             }
         };
 
+        // Enable SustainedLowLatency GC to eliminate micro-stutters in-game
+        try
+        {
+            System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
+        }
+        catch { }
+
         base.OnStartup(e);
 
         MDHelper.Services.UpdateService.CleanupOldUpdateFiles();

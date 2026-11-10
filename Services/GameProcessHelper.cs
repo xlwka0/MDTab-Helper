@@ -44,13 +44,13 @@ public static class GameProcessHelper
     /// </summary>
     public static bool IsGameForeground()
     {
-        // Keybinds and actions only apply when in an active game session
-        if (!IsGameRunning()) return false;
-
+        // 1. FAST-PATH: First verify the focused foreground window is GTA / FiveM in <0.001 ms
         IntPtr hwnd = GetForegroundWindow();
         if (hwnd == IntPtr.Zero) return false;
 
-        // 1. Process name check
+        bool isGameWindow = false;
+
+        // Fast process check on foreground PID
         GetWindowThreadProcessId(hwnd, out uint pid);
         if (pid != 0)
         {
@@ -62,7 +62,8 @@ public static class GameProcessHelper
                 {
                     if (procName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                     {
-                        return true;
+                        isGameWindow = true;
+                        break;
                     }
                 }
             }
@@ -72,27 +73,35 @@ public static class GameProcessHelper
             }
         }
 
-        // 2. Window title check as fallback
-        try
+        // Window title check as fallback
+        if (!isGameWindow)
         {
-            var sb = new StringBuilder(256);
-            if (GetWindowText(hwnd, sb, sb.Capacity) > 0)
+            try
             {
-                string title = sb.ToString();
-                foreach (var kw in GameWindowKeywords)
+                var sb = new StringBuilder(256);
+                if (GetWindowText(hwnd, sb, sb.Capacity) > 0)
                 {
-                    if (title.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                    string title = sb.ToString();
+                    foreach (var kw in GameWindowKeywords)
                     {
-                        return true;
+                        if (title.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isGameWindow = true;
+                            break;
+                        }
                     }
                 }
             }
-        }
-        catch
-        {
+            catch
+            {
+            }
         }
 
-        return false;
+        // If the user is in any other app/window (Discord, browser, desktop), exit immediately
+        if (!isGameWindow) return false;
+
+        // 2. Active window is indeed the game: verify game connection session
+        return IsGameRunning();
     }
 
     /// <summary>
@@ -140,24 +149,40 @@ public static class GameProcessHelper
         }
         catch { }
 
-        // 2. Check for FiveM: must be actively connected to a server (not just in main menu)
+        // 2. Check for FiveM: query direct process names instead of scanning all Windows processes
         bool hasFiveMProcess = false;
         try
         {
-            var procs = Process.GetProcesses();
-            foreach (var p in procs)
+            string[] directNames = { "FiveM", "FiveM_b3407_GTAProcess", "FiveM_GTAProcess", "FiveM_b3258_GTAProcess", "FiveM_b2699_GTAProcess", "FiveM_b2802_GTAProcess", "FiveM_b2944_GTAProcess", "FiveM_b3095_GTAProcess" };
+            foreach (var name in directNames)
             {
-                try
+                var procs = Process.GetProcessesByName(name);
+                if (procs != null && procs.Length > 0)
                 {
-                    if (p.ProcessName.StartsWith("FiveM", StringComparison.OrdinalIgnoreCase))
-                    {
-                        hasFiveMProcess = true;
-                        break;
-                    }
+                    hasFiveMProcess = true;
+                    foreach (var p in procs) p.Dispose();
+                    break;
                 }
-                finally
+            }
+
+            // Fallback for custom FiveM build versions if direct names missed
+            if (!hasFiveMProcess)
+            {
+                var procs = Process.GetProcesses();
+                foreach (var p in procs)
                 {
-                    p.Dispose();
+                    try
+                    {
+                        if (p.ProcessName.StartsWith("FiveM", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hasFiveMProcess = true;
+                            break;
+                        }
+                    }
+                    finally
+                    {
+                        p.Dispose();
+                    }
                 }
             }
         }

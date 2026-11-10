@@ -147,7 +147,7 @@ public partial class TabletOverlayWindow : Window
             Interval = TimeSpan.FromSeconds(1)
         };
         _clockTimer.Tick += ClockTimer_Tick;
-        _clockTimer.Start();
+        // Clock timer only starts when tablet is shown to save CPU
         ClockTimer_Tick(null, EventArgs.Empty);
 
         LoadWallpaper();
@@ -637,6 +637,8 @@ public partial class TabletOverlayWindow : Window
         }
         Activate();
         Focus();
+        if (!_clockTimer.IsEnabled) { _clockTimer.Start(); }
+        ClockTimer_Tick(null, EventArgs.Empty);
         if (_isSidebarExpanded && LockscreenGrid != null && LockscreenGrid.Visibility != Visibility.Visible)
         {
             StartDutyAutoRefresh();
@@ -652,6 +654,7 @@ public partial class TabletOverlayWindow : Window
 
     public void HideTablet()
     {
+        _clockTimer.Stop();
         StopDutyAutoRefresh();
         if (_isSidebarExpanded)
         {
