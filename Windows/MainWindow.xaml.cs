@@ -408,6 +408,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FeedbackBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _tabletWindow?.ShowFeedbackModal();
+    }
+
     private void ExportBtn_Click(object sender, RoutedEventArgs e)
     {
         if (!_images.Any())

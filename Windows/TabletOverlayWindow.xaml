@@ -511,7 +511,7 @@
                                     </Ellipse>
                                     <TextBlock Text="MDTab-Helper" Foreground="#f8fafc" FontSize="12" FontWeight="ExtraBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <Border CornerRadius="6" Background="#1A00D2FF" BorderBrush="#3300D2FF" BorderThickness="1" Padding="6,2" VerticalAlignment="Center" Margin="0,0,6,0">
-                                        <TextBlock x:Name="TabletVersionText" Text="v2.7.1" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="TabletVersionText" Text="v2.7.2" Foreground="#00d2ff" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Button x:Name="TabletUpdateBadgeBtn" Content="⚡ Update vX.X" ToolTip="O nouă versiune este disponibilă! Click pentru detalii." Style="{StaticResource TabletBtnStyle}" Background="#1A00D2FF" Foreground="#00d2ff" BorderBrush="#00d2ff" BorderThickness="1" FontSize="10" FontWeight="Bold" Padding="8,2" Margin="4,0,0,0" Height="22" Cursor="Hand" Visibility="Collapsed" Click="TabletUpdateBadgeBtn_Click" VerticalAlignment="Center"/>
                                     <TextBlock x:Name="ClockText" Text="00:00:00" Foreground="#94a3b8" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Consolas"/>
@@ -575,7 +575,8 @@
                                 <!-- Column 2: Quick Bookmarks -->
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,10,0">
                                     <Button x:Name="MdPanelBtn" Content="BiSyS" Style="{StaticResource TabletBtnStyle}" Margin="0,0,4,0" Click="MdPanelBtn_Click"/>
-                                    <Button x:Name="GtaPanelBtn" Content="Panel" Style="{StaticResource TabletBtnStyle}" Click="GtaPanelBtn_Click"/>
+                                    <Button x:Name="GtaPanelBtn" Content="Panel" Style="{StaticResource TabletBtnStyle}" Margin="0,0,4,0" Click="GtaPanelBtn_Click"/>
+                                    <Button x:Name="WikiBtn" Content="Wiki" Style="{StaticResource TabletBtnStyle}" Click="WikiBtn_Click"/>
                                 </StackPanel>
 
                                 <!-- Column 3: Tools (Opacity, Zoom, Theme) -->
@@ -814,7 +815,7 @@
                                         <!-- Footer Info Badge -->
                                         <Border Grid.Row="4" Background="#16162a" BorderBrush="#20203a" BorderThickness="1" CornerRadius="10" Padding="10">
                                             <StackPanel>
-                                                <TextBlock Text="MDTab-Tools v2.7.1" Foreground="#94a3b8" FontSize="10.5" FontWeight="Bold"/>
+                                                <TextBlock Text="MDTab-Tools v2.7.2" Foreground="#94a3b8" FontSize="10.5" FontWeight="Bold"/>
                                                 <TextBlock Text="Modificările se salvează automat." Foreground="#64748B" FontSize="9.5" Margin="0,2,0,0" TextWrapping="Wrap"/>
                                             </StackPanel>
                                         </Border>
@@ -1397,12 +1398,35 @@
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <TextBlock Text="🚀 Versiune &amp; Actualizări:" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                                     <Border CornerRadius="4" Background="#1A00E5FF" Padding="6,2" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.7.1" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
+                                                        <TextBlock x:Name="SettingsCurrentVersionText" Text="v2.7.2" Foreground="#00E5FF" FontSize="11" FontWeight="Bold"/>
                                                     </Border>
                                                     <TextBlock x:Name="SettingsUpdateStatusText" Text="Verificare actualizări la pornire..." Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
                                                 </StackPanel>
 
                                                 <Button x:Name="SettingsCheckUpdateBtn" Grid.Column="2" Content="⟳ Verifică Actualizări" Style="{StaticResource TabletBtnStyle}" Height="32" Padding="12,4" Click="SettingsCheckUpdateBtn_Click" Cursor="Hand"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Card: Feedback & Bug Report -->
+                                        <Border Background="#161b26" CornerRadius="12" Padding="16" Margin="0,0,0,14" BorderBrush="#3300E5FF" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="Feedback &amp; Raportare Bug:" Foreground="White" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                        <Border CornerRadius="4" Background="#1A10B981" Padding="6,2" VerticalAlignment="Center">
+                                                            <TextBlock Text="Direct pe Discord" Foreground="#10B981" FontSize="11" FontWeight="Bold"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock Text="Ai întâmpinat o problemă sau ai o sugestie? Trimite un raport rapid direct echipei noastre." Foreground="#94A3B8" FontSize="12" Margin="0,4,0,0"/>
+                                                </StackPanel>
+
+                                                <Button x:Name="TabletOpenFeedbackBtn" Grid.Column="2" Content="Raportează un Bug" Style="{StaticResource TabletBtnStyle}" Height="34" Padding="14,4" Background="#1A00E5FF" Foreground="#00E5FF" BorderBrush="#00E5FF" BorderThickness="1" Cursor="Hand" Click="TabletOpenFeedbackBtn_Click"/>
                                             </Grid>
                                         </Border>
 
@@ -1483,6 +1507,96 @@
 
                                         <Button Grid.Column="1" Content="Anulează" Style="{StaticResource TabletBtnStyle}" Height="34" Padding="16,0" FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0" Click="PanelSyncConsentCancel_Click"/>
                                         <Button Grid.Column="2" x:Name="PanelSyncConsentConfirmBtn" Content="✓ Activează Sincronizarea" Background="#00E5FF" Foreground="#0A0E17" Height="34" Padding="18,0" FontSize="12" FontWeight="Bold" Cursor="Hand" BorderThickness="0" Click="PanelSyncConsentConfirm_Click">
+                                            <Button.Resources>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="8"/>
+                                                </Style>
+                                            </Button.Resources>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Feedback & Bug Report Modal -->
+                        <Grid x:Name="FeedbackModalGrid" Grid.RowSpan="4" Panel.ZIndex="170" Visibility="Collapsed">
+                            <!-- Dimmed background overlay -->
+                            <Border Background="#E0070B14" MouseLeftButtonDown="FeedbackCancel_Click"/>
+
+                            <!-- Modal Card -->
+                            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Width="520" Background="#111622" BorderBrush="#00E5FF" BorderThickness="1" CornerRadius="18" Padding="24" ClipToBounds="True">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="40" Color="Black" Opacity="0.9" ShadowDepth="10"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <!-- Header -->
+                                    <Grid Margin="0,0,0,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="42" Height="42" CornerRadius="10" Background="#16253B" BorderBrush="#00E5FF" BorderThickness="1" Margin="0,0,14,0" VerticalAlignment="Center">
+                                            <TextBlock Text="i" FontSize="20" FontWeight="Bold" Foreground="#00E5FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="Raportează un Bug / Feedback" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                            <TextBlock Text="Mesajul tău este trimis instant echipei de suport pe Discord" Foreground="#00E5FF" FontSize="12" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="✕" Width="28" Height="28" Background="#182030" Foreground="#94A3B8" BorderThickness="0" Cursor="Hand" Click="FeedbackCancel_Click" VerticalAlignment="Top"/>
+                                    </Grid>
+
+                                    <!-- Tip Raport -->
+                                    <TextBlock Text="Tipul mesajului:" Foreground="#CBD5E1" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <RadioButton x:Name="FeedbackTypeBugRadio" Grid.Column="0" Content="Bug / Problemă" IsChecked="True" Foreground="White" FontSize="12" GroupName="FeedbackTypeGroup"/>
+                                        <RadioButton x:Name="FeedbackTypeSuggestionRadio" Grid.Column="2" Content="Sugestie" Foreground="White" FontSize="12" GroupName="FeedbackTypeGroup"/>
+                                        <RadioButton x:Name="FeedbackTypeOtherRadio" Grid.Column="4" Content="Altceva" Foreground="White" FontSize="12" GroupName="FeedbackTypeGroup"/>
+                                    </Grid>
+
+                                    <!-- Autor (optional) -->
+                                    <TextBlock Text="Nume sau Discord Tag (opțional):" Foreground="#CBD5E1" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBox x:Name="FeedbackAuthorTextBox" Height="34" Background="#161b26" Foreground="White" BorderBrush="#334155" BorderThickness="1" Padding="10,0" FontSize="12.5" VerticalContentAlignment="Center" Margin="0,0,0,14">
+                                        <TextBox.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="8"/>
+                                            </Style>
+                                        </TextBox.Resources>
+                                    </TextBox>
+
+                                    <!-- Descriere detaliata -->
+                                    <TextBlock Text="Descriere detaliată a problemei sau sugestiei:" Foreground="#CBD5E1" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <TextBox x:Name="FeedbackDescTextBox" Height="110" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Background="#161b26" Foreground="White" BorderBrush="#334155" BorderThickness="1" Padding="10,8" FontSize="12.5" Margin="0,0,0,10">
+                                        <TextBox.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="8"/>
+                                            </Style>
+                                        </TextBox.Resources>
+                                    </TextBox>
+
+                                    <!-- Optiuni aditionale -->
+                                    <CheckBox x:Name="FeedbackAttachDiagnosticsCheckBox" IsChecked="True" Content="Include automat versiunea MDTab-Helper și date de diagnostic" Foreground="#94A3B8" FontSize="11.5" Margin="0,0,0,14"/>
+
+                                    <!-- Status Message (for success / error / progress) -->
+                                    <TextBlock x:Name="FeedbackStatusText" Text="" Foreground="#10B981" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,12" Visibility="Collapsed"/>
+
+                                    <!-- Actions -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="1" Content="Anulează" Style="{StaticResource TabletBtnStyle}" Height="34" Padding="16,0" FontSize="12" FontWeight="SemiBold" Click="FeedbackCancel_Click"/>
+                                        <Button x:Name="FeedbackSubmitBtn" Grid.Column="3" Content="Trimite Raportul" Background="#00E5FF" Foreground="#0A0E17" Height="34" Padding="18,0" FontSize="12" FontWeight="Bold" Cursor="Hand" BorderThickness="0" Click="FeedbackSubmit_Click">
                                             <Button.Resources>
                                                 <Style TargetType="Border">
                                                     <Setter Property="CornerRadius" Value="8"/>

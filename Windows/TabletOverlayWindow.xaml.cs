@@ -754,6 +754,11 @@ public partial class TabletOverlayWindow : Window
         NavigateTo("https://gta5.ro");
     }
 
+    private void WikiBtn_Click(object sender, RoutedEventArgs e)
+    {
+        NavigateTo("https://wiki.gta5.ro");
+    }
+
     private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_settings != null)
@@ -3482,5 +3487,94 @@ public partial class TabletOverlayWindow : Window
         PopulateTabletPropertiesPanel(image);
         ShowDutyCopyToast("Imagine centrata pe ecran!");
     }
+
+    #region Feedback & Bug Reporting
+
+    public void ShowFeedbackModal()
+    {
+        if (FeedbackModalGrid == null) return;
+
+        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible && TabletWebView != null && TabletWebView.Visibility == Visibility.Visible)
+        {
+            _wasWebViewVisibleBeforeModal = true;
+            TabletWebView.Visibility = Visibility.Hidden;
+        }
+
+        FeedbackDescTextBox.Text = "";
+        FeedbackStatusText.Visibility = Visibility.Collapsed;
+        FeedbackSubmitBtn.IsEnabled = true;
+        FeedbackSubmitBtn.Content = "Trimite Raportul";
+        FeedbackTypeBugRadio.IsChecked = true;
+
+        FeedbackModalGrid.Visibility = Visibility.Visible;
+        FeedbackDescTextBox.Focus();
+    }
+
+    private void HideFeedbackModal()
+    {
+        if (FeedbackModalGrid == null) return;
+        FeedbackModalGrid.Visibility = Visibility.Collapsed;
+
+        if (_wasWebViewVisibleBeforeModal)
+        {
+            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
+            _wasWebViewVisibleBeforeModal = false;
+        }
+    }
+
+    private void TabletOpenFeedbackBtn_Click(object sender, RoutedEventArgs e)
+    {
+        ShowFeedbackModal();
+    }
+
+    private void FeedbackCancel_Click(object sender, RoutedEventArgs e)
+    {
+        HideFeedbackModal();
+    }
+
+    private async void FeedbackSubmit_Click(object sender, RoutedEventArgs e)
+    {
+        string reportType = "Bug / Problemă";
+        if (FeedbackTypeSuggestionRadio.IsChecked == true)
+        {
+            reportType = "Sugestie";
+        }
+        else if (FeedbackTypeOtherRadio.IsChecked == true)
+        {
+            reportType = "Întrebare / Altceva";
+        }
+
+        string author = FeedbackAuthorTextBox.Text;
+        string desc = FeedbackDescTextBox.Text;
+        bool attachDiagnostics = FeedbackAttachDiagnosticsCheckBox.IsChecked ?? true;
+
+        FeedbackSubmitBtn.IsEnabled = false;
+        FeedbackSubmitBtn.Content = "Se trimite...";
+        FeedbackStatusText.Visibility = Visibility.Collapsed;
+
+        var (success, msg) = await FeedbackService.SendFeedbackAsync(reportType, author, desc, attachDiagnostics);
+
+        if (success)
+        {
+            FeedbackStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x10, 0xB9, 0x81));
+            FeedbackStatusText.Text = msg;
+            FeedbackStatusText.Visibility = Visibility.Visible;
+            FeedbackSubmitBtn.Content = "Trimis cu succes!";
+
+            await Task.Delay(1800);
+            HideFeedbackModal();
+        }
+        else
+        {
+            FeedbackStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xEF, 0x44, 0x44));
+            FeedbackStatusText.Text = msg;
+            FeedbackStatusText.Visibility = Visibility.Visible;
+
+            FeedbackSubmitBtn.IsEnabled = true;
+            FeedbackSubmitBtn.Content = "Trimite Raportul";
+        }
+    }
+
+    #endregion
 
 }

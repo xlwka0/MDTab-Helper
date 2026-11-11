@@ -1,28 +1,33 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MDHelper.Services;
 
 /// <summary>
-/// Helper to detect whether the target game (GTA V / FiveM) is running,
-/// actively connected to a server (not just in main menu / launcher), and/or active foreground.
+/// Helper to detect whether the target game (GTA V / FiveM / RAGE:MP) is running and active foreground.
 /// </summary>
 public static class GameProcessHelper
 {
     private static readonly string[] GameProcessPrefixes = new[]
     {
         "gta5",
-        "fivem"
+        "fivem",
+        "ragemp",
+        "rage-mp",
+        "playgtav"
     };
 
     private static readonly string[] GameWindowKeywords = new[]
     {
         "Grand Theft Auto",
-        "FiveM"
+        "FiveM",
+        "GTA5",
+        "GTA V",
+        "GTA:V",
+        "RAGE Multiplayer"
     };
 
     [DllImport("user32.dll")]
@@ -34,23 +39,23 @@ public static class GameProcessHelper
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
     private static bool _cachedIsRunning = false;
     private static DateTime _lastRunningCheck = DateTime.MinValue;
     private static readonly object _runningLock = new();
 
     /// <summary>
-    /// Checks whether the game window is currently the active foreground window,
-    /// and that the game is actively connected to a server.
+    /// Checks whether the game window is currently the active foreground window.
+    /// Fast-path executed in <0.01 ms with zero disk access to guarantee keybind responsiveness.
     /// </summary>
     public static bool IsGameForeground()
     {
-        // 1. FAST-PATH: First verify the focused foreground window is GTA / FiveM in <0.001 ms
         IntPtr hwnd = GetForegroundWindow();
         if (hwnd == IntPtr.Zero) return false;
 
-        bool isGameWindow = false;
-
-        // Fast process check on foreground PID
+        // 1. Process name check of foreground window PID (<0.01 ms)
         GetWindowThreadProcessId(hwnd, out uint pid);
         if (pid != 0)
         {
@@ -62,8 +67,7 @@ public static class GameProcessHelper
                 {
                     if (procName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                     {
-                        isGameWindow = true;
-                        break;
+                        return true;
                     }
                 }
             }
@@ -73,39 +77,48 @@ public static class GameProcessHelper
             }
         }
 
-        // Window title check as fallback
-        if (!isGameWindow)
+        // 2. Window title check as fallback
+        try
         {
-            try
+            var sb = new StringBuilder(256);
+            if (GetWindowText(hwnd, sb, sb.Capacity) > 0)
             {
-                var sb = new StringBuilder(256);
-                if (GetWindowText(hwnd, sb, sb.Capacity) > 0)
+                string title = sb.ToString();
+                foreach (var kw in GameWindowKeywords)
                 {
-                    string title = sb.ToString();
-                    foreach (var kw in GameWindowKeywords)
+                    if (title.Contains(kw, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (title.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                        {
-                            isGameWindow = true;
-                            break;
-                        }
+                        return true;
                     }
                 }
             }
-            catch
-            {
-            }
+        }
+        catch
+        {
         }
 
-        // If the user is in any other app/window (Discord, browser, desktop), exit immediately
-        if (!isGameWindow) return false;
+        // 3. Window class check as fallback (GTA V and FiveM native window class is always "grcWindow")
+        try
+        {
+            var sbClass = new StringBuilder(256);
+            if (GetClassName(hwnd, sbClass, sbClass.Capacity) > 0)
+            {
+                string className = sbClass.ToString();
+                if (className.Equals("grcWindow", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+        }
 
-        // 2. Active window is indeed the game: verify game connection session
-        return IsGameRunning();
+        return false;
     }
 
     /// <summary>
-    /// Checks whether the game is running AND actively connected to a server (not sitting in launcher/menu).
+    /// Checks whether the game process is running in Windows.
     /// Results are cached for up to 1 second to minimize performance impact.
     /// </summary>
     public static bool IsGameRunning(bool bypassCache = false)
@@ -126,187 +139,56 @@ public static class GameProcessHelper
 
     private static bool CheckIsGameRunningInternal()
     {
-        // 1. Check for standard GTA5 in-game process
-        try
-        {
-            var gtaProcs = Process.GetProcessesByName("GTA5");
-            if (gtaProcs != null && gtaProcs.Length > 0)
-            {
-                foreach (var p in gtaProcs) p.Dispose();
-                return true;
-            }
-        }
-        catch { }
+        // 1. If foreground window is the game, it is definitely running
+        if (IsGameForeground()) return true;
 
-        try
+        // 2. Fast direct process check for common game processes
+        string[] fastNames = { 
+            "GTA5", "gta5", 
+            "FiveM_b3407_GTAProcess", "FiveM_GTAProcess", "FiveM_b3258_GTAProcess", 
+            "FiveM_b2699_GTAProcess", "FiveM_b2802_GTAProcess", "FiveM_b2944_GTAProcess", 
+            "FiveM_b3095_GTAProcess", "FiveM", 
+            "ragemp_v", "ragemp", "PlayGTAV" 
+        };
+        foreach (var name in fastNames)
         {
-            var gtaProcs = Process.GetProcessesByName("gta5");
-            if (gtaProcs != null && gtaProcs.Length > 0)
-            {
-                foreach (var p in gtaProcs) p.Dispose();
-                return true;
-            }
-        }
-        catch { }
-
-        // 2. Check for FiveM: query direct process names instead of scanning all Windows processes
-        bool hasFiveMProcess = false;
-        try
-        {
-            string[] directNames = { "FiveM", "FiveM_b3407_GTAProcess", "FiveM_GTAProcess", "FiveM_b3258_GTAProcess", "FiveM_b2699_GTAProcess", "FiveM_b2802_GTAProcess", "FiveM_b2944_GTAProcess", "FiveM_b3095_GTAProcess" };
-            foreach (var name in directNames)
+            try
             {
                 var procs = Process.GetProcessesByName(name);
                 if (procs != null && procs.Length > 0)
                 {
-                    hasFiveMProcess = true;
                     foreach (var p in procs) p.Dispose();
-                    break;
+                    return true;
                 }
             }
+            catch { }
+        }
 
-            // Fallback for custom FiveM build versions if direct names missed
-            if (!hasFiveMProcess)
+        // 3. Prefix match across all running processes if non-standard build name
+        try
+        {
+            var allProcs = Process.GetProcesses();
+            foreach (var p in allProcs)
             {
-                var procs = Process.GetProcesses();
-                foreach (var p in procs)
+                try
                 {
-                    try
+                    string pName = p.ProcessName;
+                    foreach (var prefix in GameProcessPrefixes)
                     {
-                        if (p.ProcessName.StartsWith("FiveM", StringComparison.OrdinalIgnoreCase))
+                        if (pName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                         {
-                            hasFiveMProcess = true;
-                            break;
+                            return true;
                         }
                     }
-                    finally
-                    {
-                        p.Dispose();
-                    }
+                }
+                finally
+                {
+                    p.Dispose();
                 }
             }
         }
         catch { }
 
-        if (hasFiveMProcess)
-        {
-            return IsFiveMConnectedToServer();
-        }
-
         return false;
-    }
-
-    private static bool IsFiveMConnectedToServer()
-    {
-        try
-        {
-            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string logDir = Path.Combine(localAppData, "FiveM", "FiveM.app", "logs");
-
-            if (!Directory.Exists(logDir))
-            {
-                // Fallback check from process location
-                var procs = Process.GetProcessesByName("FiveM");
-                if (procs == null || procs.Length == 0)
-                {
-                    procs = Process.GetProcessesByName("FiveM_b3407_GTAProcess");
-                }
-
-                if (procs != null && procs.Length > 0)
-                {
-                    try
-                    {
-                        string? exe = procs[0].MainModule?.FileName;
-                        if (!string.IsNullOrEmpty(exe))
-                        {
-                            var cur = new DirectoryInfo(Path.GetDirectoryName(exe) ?? "");
-                            while (cur != null)
-                            {
-                                string cand = Path.Combine(cur.FullName, "logs");
-                                if (Directory.Exists(cand)) { logDir = cand; break; }
-                                cand = Path.Combine(cur.FullName, "FiveM.app", "logs");
-                                if (Directory.Exists(cand)) { logDir = cand; break; }
-                                cur = cur.Parent;
-                            }
-                        }
-                    }
-                    catch { }
-                    finally
-                    {
-                        foreach (var p in procs) p.Dispose();
-                    }
-                }
-            }
-
-            if (string.IsNullOrEmpty(logDir) || !Directory.Exists(logDir))
-            {
-                return false;
-            }
-
-            var dirInfo = new DirectoryInfo(logDir);
-            var latestLog = dirInfo.GetFiles("CitizenFX_log_*.log")
-                .OrderByDescending(f => f.LastWriteTimeUtc)
-                .FirstOrDefault();
-
-            if (latestLog == null) return false;
-
-            // Ensure the log file is recent (within 4 hours)
-            if ((DateTime.UtcNow - latestLog.LastWriteTimeUtc).TotalHours > 4)
-            {
-                return false;
-            }
-
-            // Read the file with FileShare.ReadWrite so FiveM's logger is never blocked
-            using var fs = new FileStream(latestLog.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            // Read only the tail (last 64 KB) of the log to prevent massive memory allocations every second
-            const int tailBytes = 65536;
-            if (fs.Length > tailBytes)
-            {
-                fs.Seek(-tailBytes, SeekOrigin.End);
-            }
-            using var reader = new StreamReader(fs, Encoding.UTF8);
-            string content = reader.ReadToEnd();
-
-            // Check for connection milestones
-            int connectIdx = -1;
-            string[] connectKeywords = { "connectOK", "Network connected", "INIT_SESSION" };
-            foreach (var kw in connectKeywords)
-            {
-                int idx = content.LastIndexOf(kw, StringComparison.OrdinalIgnoreCase);
-                if (idx > connectIdx) connectIdx = idx;
-            }
-
-            if (connectIdx < 0)
-            {
-                return false; // Sitting in main menu
-            }
-
-            // Check if there is an explicit disconnect after connecting
-            string[] disconnectKeywords = { 
-                "Connection dropped", 
-                "connection timed out", 
-                "Server->Client connection timed out", 
-                "Disconnected from server",
-                "Waiting for game to shutdown"
-            };
-
-            int disconnectIdx = -1;
-            foreach (var kw in disconnectKeywords)
-            {
-                int idx = content.LastIndexOf(kw, StringComparison.OrdinalIgnoreCase);
-                if (idx > disconnectIdx) disconnectIdx = idx;
-            }
-
-            if (disconnectIdx > connectIdx)
-            {
-                return false;
-            }
-
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

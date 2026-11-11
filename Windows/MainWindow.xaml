@@ -147,6 +147,11 @@
                         Click="MuteBtn_Click"
                         Style="{StaticResource ModernButtonStyle}"/>
 
+                <Button x:Name="FeedbackBtn" 
+                        Content="Feedback &amp; Bug Report" 
+                        Click="FeedbackBtn_Click"
+                        Style="{StaticResource ModernButtonStyle}"/>
+
                 <!-- Status -->
                 <TextBlock x:Name="StatusText" 
                            Text="Ready" 
