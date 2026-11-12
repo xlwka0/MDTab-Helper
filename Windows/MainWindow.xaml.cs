@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -295,9 +295,20 @@ public partial class MainWindow : Window
                 ToggleOverlayBtn.Content = "Show Overlays";
                 
                 _images.Clear();
-                foreach (var image in config.Images.Where(i => File.Exists(i.GetAbsoluteFilePath())))
+                if (config.Images != null)
                 {
-                    _images.Add(image);
+                    foreach (var image in config.Images.Where(i => i != null && File.Exists(i.GetAbsoluteFilePath())))
+                    {
+                        _images.Add(image);
+                    }
+                }
+
+                if (config.Keybind != null)
+                {
+                    _config.Keybind = config.Keybind;
+                    ApplyCopilotSettings();
+                    _keybind?.Apply(this, _config.Keybind);
+                    _tabletWindow?.ReloadSettingsFromConfig(_config.Keybind);
                 }
                 
                 SaveConfiguration();
@@ -324,8 +335,14 @@ public partial class MainWindow : Window
             try
             {
                 var config = _configService.ImportConfiguration(dialog.FileName);
+                if (config == null)
+                {
+                    MessageBox.Show("Failed to import configuration file.", "Import Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 _images.Clear();
-                if (config?.Images != null)
+                if (config.Images != null)
                 {
                     foreach (var image in config.Images)
                     {
@@ -333,17 +350,27 @@ public partial class MainWindow : Window
                             _images.Add(image);
                     }
                 }
+
+                if (config.Keybind != null)
+                {
+                    _config.Keybind = config.Keybind;
+                    ApplyCopilotSettings();
+                    _keybind?.Apply(this, _config.Keybind);
+                }
+
                 SaveConfiguration();
+                RefreshOverlays();
                 UpdateStatus();
 
-                // Recreate tablet overlay with new settings
                 if (_tabletWindow != null)
                 {
-                    _tabletWindow.ForceClose = true;
-                    _tabletWindow.Close();
+                    _tabletWindow.ReloadSettingsFromConfig(_config.Keybind);
                 }
-                _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
-                _tabletWindow.SettingsSaved += TabletWindow_SettingsSaved;
+                else
+                {
+                    _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
+                    _tabletWindow.SettingsSaved += TabletWindow_SettingsSaved;
+                }
 
                 StatusText.Text = "Configuration imported successfully";
             }
@@ -368,14 +395,15 @@ public partial class MainWindow : Window
             ApplyCopilotSettings();
             _keybind?.Apply(this, _config.Keybind);
 
-            // Re-create tablet window to pick up new settings
             if (_tabletWindow != null)
             {
-                _tabletWindow.ForceClose = true;
-                _tabletWindow.Close();
+                _tabletWindow.ReloadSettingsFromConfig(_config.Keybind);
             }
-            _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
-            _tabletWindow.SettingsSaved += TabletWindow_SettingsSaved;
+            else
+            {
+                _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
+                _tabletWindow.SettingsSaved += TabletWindow_SettingsSaved;
+            }
 
             StatusText.Text = "Keybind settings saved";
         }
@@ -395,14 +423,15 @@ public partial class MainWindow : Window
             ApplyCopilotSettings();
             _keybind?.Apply(this, _config.Keybind);
 
-            // Re-create tablet window to pick up new settings
             if (_tabletWindow != null)
             {
-                _tabletWindow.ForceClose = true;
-                _tabletWindow.Close();
+                _tabletWindow.ReloadSettingsFromConfig(_config.Keybind);
             }
-            _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
-            _tabletWindow.SettingsSaved += TabletWindow_SettingsSaved;
+            else
+            {
+                _tabletWindow = new TabletOverlayWindow(_config.Keybind, _config, _images, SaveConfiguration, RefreshOverlays, ToggleAllOverlays, RefreshKeybinds);
+                _tabletWindow.SettingsSaved += TabletWindow_SettingsSaved;
+            }
 
             StatusText.Text = "Display control settings saved";
         }

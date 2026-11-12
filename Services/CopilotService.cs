@@ -117,10 +117,16 @@ public sealed class CopilotService : IDisposable
     {
         if (!Enabled) return;
 
+        bool isCopilotKey = IsMatchingKey(vkCode, CopilotKey);
+        bool isTriggerKey = IsMatchingKey(vkCode, TriggerKey);
+        bool isSafetyBrake = _isLocked && isDown && (vkCode == 0x53 || vkCode == 0x20 || vkCode == 0x1B);
+
+        if (!isCopilotKey && !isTriggerKey && !isSafetyBrake) return;
+
         // If not already locked, only engage if GTA5 is the active foreground window
         if (!_isLocked && !KeybindOrchestrator.IsGta5Foreground()) return;
 
-        if (IsMatchingKey(vkCode, CopilotKey))
+        if (isCopilotKey)
         {
             if (isDown)
             {
@@ -140,7 +146,7 @@ public sealed class CopilotService : IDisposable
                 }
             }
         }
-        else if (IsMatchingKey(vkCode, TriggerKey))
+        else if (isTriggerKey)
         {
             if (isDown)
             {
@@ -161,19 +167,12 @@ public sealed class CopilotService : IDisposable
                 }
             }
         }
-        else if (_isLocked && isDown)
+        else if (isSafetyBrake)
         {
             // If driving/walking with autopilot and user taps S (brake/reverse), Space (handbrake), or Escape:
             // Automatically disengage autopilot for safety, letting the brake event pass through to the game!
-            const int VK_S = 0x53;
-            const int VK_SPACE = 0x20;
-            const int VK_ESCAPE = 0x1B;
-
-            if (vkCode == VK_S || vkCode == VK_SPACE || vkCode == VK_ESCAPE)
-            {
-                ReleaseLock();
-                // Do not block event so braking or menu takes effect immediately
-            }
+            ReleaseLock();
+            // Do not block event so braking or menu takes effect immediately
         }
     }
 

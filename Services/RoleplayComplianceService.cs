@@ -13,6 +13,10 @@ namespace MDHelper.Services;
 /// </summary>
 public static class RoleplayComplianceService
 {
+    private static readonly Regex ChatCommandPrefixRegex = new(@"^/(me|do|b|low|s|w)\s+", RegexOptions.Compiled);
+    private static readonly Regex PunctuationStripRegex = new(@"[^\w\s]", RegexOptions.Compiled);
+    private static readonly Regex MultiWhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
+
     // Whitelist keywords indicating medical/third-party/patient context
     private static readonly string[] WhitelistKeywords =
     {
@@ -94,7 +98,7 @@ public static class RoleplayComplianceService
         string norm = Normalize(rawLine).Trim();
 
         // Strip leading chat command prefixes like /me, /do, /b, /low, etc.
-        norm = Regex.Replace(norm, @"^/(me|do|b|low|s|w)\s+", "").Trim();
+        norm = ChatCommandPrefixRegex.Replace(norm, "").Trim();
 
         // Check whitelist: legitimate third-party / patient / medical observation
         bool hasWhitelistKeyword = WhitelistKeywords.Any(k => norm.Contains(k));
@@ -106,8 +110,8 @@ public static class RoleplayComplianceService
         }
 
         // Clean punctuation to prevent bypassing with dots, commas, symbols
-        string clean = Regex.Replace(norm, @"[^\w\s]", " ");
-        clean = Regex.Replace(clean, @"\s+", " ").Trim();
+        string clean = PunctuationStripRegex.Replace(norm, " ");
+        clean = MultiWhitespaceRegex.Replace(clean, " ").Trim();
 
         foreach (var phrase in BlacklistPhrases)
         {

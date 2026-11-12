@@ -59,7 +59,7 @@ public partial class OverlayWindow : Window
             bitmap.EndInit();
 
             OverlayImage.Source = bitmap;
-            _aspectRatio = bitmap.PixelWidth / (double)bitmap.PixelHeight;
+            _aspectRatio = bitmap.PixelHeight > 0 ? bitmap.PixelWidth / (double)bitmap.PixelHeight : 1.0;
 
             // Set initial size if not already set
             if (_imageData.Width <= 0 || _imageData.Height <= 0)
@@ -181,7 +181,7 @@ public partial class OverlayWindow : Window
 
     private void Window_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (_imageData == null || _imageData.IsLocked) return;
+        if (_imageData == null || _imageData.IsLocked || Width <= 0 || Height <= 0) return;
 
         if ((DateTime.UtcNow - _lastWheelSnapshotTime).TotalMilliseconds > 800)
         {
@@ -239,12 +239,15 @@ public partial class OverlayWindow : Window
         _resizeStart = e.GetPosition(this);
         _resizeStartWidth = Width;
         _resizeStartHeight = Height;
+        (sender as UIElement)?.CaptureMouse();
         e.Handled = true;
     }
 
     private void ResizeHandle_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (!_isResizing) return;
         _isResizing = false;
+        (sender as UIElement)?.ReleaseMouseCapture();
         if (Math.Abs(Width - _resizeStartWidth) > 2 || Math.Abs(Height - _resizeStartHeight) > 2)
         {
             _imageData.PushUndoSnapshotExplicit(_imageData.X, _imageData.Y, _resizeStartWidth, _resizeStartHeight, _imageData.Opacity);
@@ -263,11 +266,29 @@ public partial class OverlayWindow : Window
 
         double screenW = SystemParameters.PrimaryScreenWidth > 0 ? SystemParameters.PrimaryScreenWidth : 1920;
         double screenH = SystemParameters.PrimaryScreenHeight > 0 ? SystemParameters.PrimaryScreenHeight : 1080;
+        double maxW = Math.Max(50, screenW - Left);
+        double maxH = Math.Max(50, screenH - Top);
 
-        var newWidth = Math.Clamp(_resizeStartWidth + dx, 50, Math.Max(50, screenW - Left));
-        var newHeight = _imageData.MaintainAspectRatio
-            ? newWidth / _aspectRatio
-            : Math.Clamp(_resizeStartHeight + dy, 50, Math.Max(50, screenH - Top));
+        var newWidth = Math.Clamp(_resizeStartWidth + dx, 50, maxW);
+        double newHeight;
+        if (_imageData.MaintainAspectRatio && _aspectRatio > 0)
+        {
+            newHeight = newWidth / _aspectRatio;
+            if (newHeight > maxH)
+            {
+                newHeight = maxH;
+                newWidth = Math.Clamp(newHeight * _aspectRatio, 50, maxW);
+            }
+            else if (newHeight < 50)
+            {
+                newHeight = 50;
+                newWidth = Math.Clamp(newHeight * _aspectRatio, 50, maxW);
+            }
+        }
+        else
+        {
+            newHeight = Math.Clamp(_resizeStartHeight + dy, 50, maxH);
+        }
 
         Width = newWidth;
         Height = newHeight;

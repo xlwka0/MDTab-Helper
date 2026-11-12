@@ -139,28 +139,26 @@ public sealed class KeybindOrchestrator : IDisposable
     private void UnregisterAll()
     {
         _hotkey.UnregisterAll();
-        _hotkey.Unregister(WINDOW_TOGGLE_HOTKEY_ID);
-        _hotkey.Unregister(OVERLAY_TOGGLE_HOTKEY_ID);
-        _hotkey.Unregister(STOP_TOGGLE_HOTKEY_ID);
-        _hotkey.Unregister(TABLET_TOGGLE_HOTKEY_ID);
         _entryMap.Clear();
+    }
+
+    private static bool AreSideModifiersSatisfied(uint mods)
+    {
+        if ((mods & 0x0010) != 0 && (GetAsyncKeyState(0xA3) & 0x8000) == 0) return false; // RightCtrl
+        if ((mods & 0x0020) != 0 && (GetAsyncKeyState(0xA2) & 0x8000) == 0) return false; // LeftCtrl
+        if ((mods & 0x0040) != 0 && (GetAsyncKeyState(0xA5) & 0x8000) == 0) return false; // RightAlt
+        if ((mods & 0x0080) != 0 && (GetAsyncKeyState(0xA4) & 0x8000) == 0) return false; // LeftAlt
+        if ((mods & 0x0100) != 0 && (GetAsyncKeyState(0xA1) & 0x8000) == 0) return false; // RightShift
+        if ((mods & 0x0200) != 0 && (GetAsyncKeyState(0xA0) & 0x8000) == 0) return false; // LeftShift
+        return true;
     }
 
     private async void Hotkey_Triggered(object? sender, int hotkeyId)
     {
         if (hotkeyId == WINDOW_TOGGLE_HOTKEY_ID)
         {
-            if (Settings.WindowToggle != null)
-            {
-                if ((Settings.WindowToggle.HotkeyModifiers & 0x0010) != 0)
-                {
-                    if ((GetAsyncKeyState(0xA3) & 0x8000) == 0) return; // RightCtrl required
-                }
-                else if ((Settings.WindowToggle.HotkeyModifiers & 0x0020) != 0)
-                {
-                    if ((GetAsyncKeyState(0xA2) & 0x8000) == 0) return; // LeftCtrl required
-                }
-            }
+            if (Settings.WindowToggle != null && !AreSideModifiersSatisfied(Settings.WindowToggle.HotkeyModifiers))
+                return;
 
             ToggleExternalWindow();
             return;
@@ -168,14 +166,8 @@ public sealed class KeybindOrchestrator : IDisposable
 
         if (hotkeyId == OVERLAY_TOGGLE_HOTKEY_ID)
         {
-            if ((Settings.OverlayToggleModifiers & 0x0010) != 0)
-            {
-                if ((GetAsyncKeyState(0xA3) & 0x8000) == 0) return; // RightCtrl required
-            }
-            else if ((Settings.OverlayToggleModifiers & 0x0020) != 0)
-            {
-                if ((GetAsyncKeyState(0xA2) & 0x8000) == 0) return; // LeftCtrl required
-            }
+            if (!AreSideModifiersSatisfied(Settings.OverlayToggleModifiers))
+                return;
 
             OverlayToggleRequested?.Invoke(this, EventArgs.Empty);
             return;
@@ -183,6 +175,9 @@ public sealed class KeybindOrchestrator : IDisposable
 
         if (hotkeyId == TABLET_TOGGLE_HOTKEY_ID)
         {
+            if (!AreSideModifiersSatisfied(Settings.TabletModifiers))
+                return;
+
             TabletToggleRequested?.Invoke(this, EventArgs.Empty);
             return;
         }
@@ -191,7 +186,11 @@ public sealed class KeybindOrchestrator : IDisposable
         // even if focus temporarily shifted away from the game!
         if (hotkeyId == STOP_TOGGLE_HOTKEY_ID)
         {
-            _runCts?.Cancel();
+            if (!AreSideModifiersSatisfied(Settings.StopHotkeyModifiers))
+                return;
+
+            var stopCts = Volatile.Read(ref _runCts);
+            try { stopCts?.Cancel(); } catch (ObjectDisposedException) { }
             SoundService.PlayKeybindStop();
             return;
         }
@@ -203,6 +202,7 @@ public sealed class KeybindOrchestrator : IDisposable
 
         if (!_entryMap.TryGetValue(hotkeyId, out var entry)) return;
         if (!entry.Enabled) return;
+        if (!AreSideModifiersSatisfied(entry.HotkeyModifiers)) return;
 
         // Diagnostic logging to track exactly what key/process triggered the keybind
         string activeProc = "Unknown";
@@ -236,32 +236,35 @@ public sealed class KeybindOrchestrator : IDisposable
             return;
         }
 
-        try
-        {
-            _runCts?.Cancel();
-            _runCts = new CancellationTokenSource();
-            var cts = _runCts;
-            var token = cts.Token;
+        var prevCts = Volatile.Read(ref _runCts);
+        try { prevCts?.Cancel(); } catch (ObjectDisposedException) { }
 
-            // Continually monitor foreground window while keybind executes:
-            // If user leaves the game / switches app, kill the keybind immediately!
-            _ = Task.Run(async () =>
+        using var cts = new CancellationTokenSource();
+        Volatile.Write(ref _runCts, cts);
+        var token = cts.Token;
+
+        // Continually monitor foreground window while keybind executes:
+        // If user leaves the game / switches app, kill the keybind immediately!
+        var monitorTask = Task.Run(async () =>
+        {
+            try
             {
-                try
+                while (!token.IsCancellationRequested)
                 {
-                    while (!token.IsCancellationRequested)
+                    await Task.Delay(25, token).ConfigureAwait(false);
+                    if (!GameProcessHelper.IsGameForeground())
                     {
-                        await Task.Delay(25, token).ConfigureAwait(false);
-                        if (!GameProcessHelper.IsGameForeground())
-                        {
-                            cts.Cancel();
-                            break;
-                        }
+                        cts.Cancel();
+                        break;
                     }
                 }
-                catch { }
-            }, token);
+            }
+            catch (OperationCanceledException) { }
+            catch { }
+        }, token);
 
+        try
+        {
             SoundService.PlayKeybindStart();
             await _sequence.RunAsync(Settings, entry, GameProcessHelper.IsGameForeground, token);
             SoundService.PlayKeybindFinish();
@@ -277,6 +280,12 @@ public sealed class KeybindOrchestrator : IDisposable
             {
                 MessageBox.Show(ex.Message, "Keybind error", MessageBoxButton.OK, MessageBoxImage.Error);
             });
+        }
+        finally
+        {
+            try { cts.Cancel(); } catch { }
+            Interlocked.CompareExchange(ref _runCts, null, cts);
+            try { await monitorTask.ConfigureAwait(false); } catch { }
         }
     }
 
@@ -306,9 +315,10 @@ public sealed class KeybindOrchestrator : IDisposable
 
     public void Dispose()
     {
+        var cts = Interlocked.Exchange(ref _runCts, null);
         try
         {
-            _runCts?.Cancel();
+            cts?.Cancel();
         }
         catch
         {

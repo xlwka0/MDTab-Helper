@@ -23,13 +23,16 @@ public record UpdateInfo
 public class UpdateService
 {
     private const string GitHubApiUrl = "https://api.github.com/repos/xlwka0/MDTab-Helper/releases/latest";
-    private readonly HttpClient _httpClient;
+    private static readonly HttpClient _httpClient = CreateHttpClient();
 
-    public UpdateService()
+    private static HttpClient CreateHttpClient()
     {
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.6.7");
-        _httpClient.Timeout = TimeSpan.FromSeconds(20);
+        var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(20)
+        };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.7.3");
+        return client;
     }
 
     public static string GetCurrentVersion()
@@ -40,7 +43,7 @@ public class UpdateService
         {
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
-        return "2.6.7";
+        return "2.7.3";
     }
 
     public async Task<UpdateInfo> CheckForUpdatesAsync()
@@ -174,7 +177,6 @@ public class UpdateService
             {
                 // File.Copy works seamlessly across different disk drives/volumes
                 File.Copy(tempDownloadedExe, currentExe, overwrite: true);
-                try { File.Delete(tempDownloadedExe); } catch { }
             }
             catch
             {
@@ -216,8 +218,16 @@ public class UpdateService
 
             if (newProcess == null)
             {
+                // Restore original executable before falling back to batch script (which still needs tempDownloadedExe)
+                if (File.Exists(backupExe))
+                {
+                    try { File.Move(backupExe, currentExe, overwrite: true); } catch { }
+                }
                 throw new InvalidOperationException("Process launch timed out during security scan.");
             }
+
+            newProcess.Dispose();
+            try { File.Delete(tempDownloadedExe); } catch { }
 
             // 5. Cleanly shut down this older instance
             System.Windows.Application.Current.Dispatcher.Invoke(() =>

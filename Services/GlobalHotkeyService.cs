@@ -40,20 +40,22 @@ public sealed class GlobalHotkeyService : IDisposable
             UnregisterHotKey(_hwnd, hotkeyId);
             existing.Modifiers = modifiers;
             existing.VirtualKey = virtualKey;
+            existing.Registered = false;
         }
         else
         {
             existing = new HotkeyRegistration { Id = hotkeyId, Modifiers = modifiers, VirtualKey = virtualKey };
-            _registrations[hotkeyId] = existing;
         }
 
         if (!RegisterHotKey(_hwnd, hotkeyId, modifiers, (uint)virtualKey))
         {
             var err = Marshal.GetLastWin32Error();
+            _registrations.Remove(hotkeyId);
             throw new InvalidOperationException($"RegisterHotKey failed for id={hotkeyId}. Win32Error={err}");
         }
 
         existing.Registered = true;
+        _registrations[hotkeyId] = existing;
     }
 
     public void Unregister(int hotkeyId)

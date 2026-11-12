@@ -25,6 +25,7 @@ public partial class WindowToggleSettingsWindow : Window
     private bool _isRecordingCopilotKey = false;
 
     private int _copilotTriggerVirtualKey = 0x11; // default Ctrl
+    private uint _copilotTriggerModifiers = 0x0012; // default RightCtrl
     private bool _isRecordingCopilotTrigger = false;
 
     public KeybindSettings Settings { get; private set; }
@@ -66,6 +67,7 @@ public partial class WindowToggleSettingsWindow : Window
         CopilotEnabledCheckBox.IsChecked = Settings.CopilotEnabled;
         _copilotVirtualKey = Settings.CopilotVirtualKey;
         _copilotTriggerVirtualKey = Settings.CopilotTriggerVirtualKey;
+        _copilotTriggerModifiers = Settings.CopilotTriggerModifiers;
 
         UpdateWindowToggleKeyDisplay();
         UpdateOverlayToggleKeyDisplay();
@@ -146,8 +148,8 @@ public partial class WindowToggleSettingsWindow : Window
 
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
-            // Check if it's a modifier key itself (only for Window/Overlay/Tablet toggles which require non-modifier key combinations)
-            if ((_isRecordingWindowToggle || _isRecordingOverlayToggle || _isRecordingTablet) &&
+            // Check if it's a modifier key itself
+            if ((_isRecordingWindowToggle || _isRecordingOverlayToggle || _isRecordingTablet || _isRecordingCopilotTrigger) &&
                 (key == Key.LeftCtrl || key == Key.RightCtrl ||
                  key == Key.LeftAlt || key == Key.RightAlt ||
                  key == Key.LeftShift || key == Key.RightShift ||
@@ -157,8 +159,10 @@ public partial class WindowToggleSettingsWindow : Window
                     UpdateWindowToggleRecordingDisplay();
                 else if (_isRecordingOverlayToggle)
                     UpdateOverlayToggleRecordingDisplay();
-                else
+                else if (_isRecordingTablet)
                     UpdateTabletRecordingDisplay();
+                else
+                    RecordCopilotTriggerBtn.Content = $"{KeybindViewModel.VkToKeyName(KeyInterop.VirtualKeyFromKey(key))} + ...";
                 return;
             }
 
@@ -213,6 +217,7 @@ public partial class WindowToggleSettingsWindow : Window
                 else if (_isRecordingCopilotTrigger)
                 {
                     _copilotTriggerVirtualKey = vk;
+                    _copilotTriggerModifiers = modifiers;
                     UpdateCopilotTriggerDisplay();
                     _isRecordingCopilotTrigger = false;
                     RecordCopilotTriggerBtn.Content = "🔴 Set Key";
@@ -223,6 +228,33 @@ public partial class WindowToggleSettingsWindow : Window
         {
             base.OnPreviewKeyDown(e);
         }
+    }
+
+    protected override void OnPreviewKeyUp(KeyEventArgs e)
+    {
+        if (_isRecordingCopilotTrigger)
+        {
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key == Key.LeftCtrl || key == Key.RightCtrl ||
+                key == Key.LeftAlt || key == Key.RightAlt ||
+                key == Key.LeftShift || key == Key.RightShift ||
+                key == Key.LWin || key == Key.RWin)
+            {
+                var vk = KeyInterop.VirtualKeyFromKey(key);
+                if (vk > 0)
+                {
+                    _copilotTriggerVirtualKey = vk;
+                    _copilotTriggerModifiers = 0;
+                    UpdateCopilotTriggerDisplay();
+                    _isRecordingCopilotTrigger = false;
+                    RecordCopilotTriggerBtn.Content = "🔴 Set Key";
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
+        base.OnPreviewKeyUp(e);
     }
 
     protected override void OnDeactivated(EventArgs e)
@@ -315,7 +347,28 @@ public partial class WindowToggleSettingsWindow : Window
     {
         if (CopilotTriggerDisplayTextBlock != null)
         {
-            CopilotTriggerDisplayTextBlock.Text = KeybindViewModel.VkToKeyName(_copilotTriggerVirtualKey);
+            var triggerParts = new System.Collections.Generic.List<string>();
+            if ((_copilotTriggerModifiers & 0x0010) != 0) triggerParts.Add("RightCtrl");
+            else if ((_copilotTriggerModifiers & 0x0020) != 0) triggerParts.Add("LeftCtrl");
+            else if ((_copilotTriggerModifiers & 0x0002) != 0) triggerParts.Add("Ctrl");
+
+            if ((_copilotTriggerModifiers & 0x0040) != 0) triggerParts.Add("RightAlt");
+            else if ((_copilotTriggerModifiers & 0x0080) != 0) triggerParts.Add("LeftAlt");
+            else if ((_copilotTriggerModifiers & 0x0001) != 0) triggerParts.Add("Alt");
+
+            if ((_copilotTriggerModifiers & 0x0100) != 0) triggerParts.Add("RightShift");
+            else if ((_copilotTriggerModifiers & 0x0200) != 0) triggerParts.Add("LeftShift");
+            else if ((_copilotTriggerModifiers & 0x0004) != 0) triggerParts.Add("Shift");
+
+            if ((_copilotTriggerModifiers & 0x0008) != 0) triggerParts.Add("Win");
+
+            string keyName = KeybindViewModel.VkToKeyName(_copilotTriggerVirtualKey);
+            if (!triggerParts.Contains(keyName))
+            {
+                triggerParts.Add(keyName);
+            }
+
+            CopilotTriggerDisplayTextBlock.Text = string.Join(" + ", triggerParts);
         }
     }
 
@@ -368,6 +421,7 @@ public partial class WindowToggleSettingsWindow : Window
         Settings.CopilotEnabled = CopilotEnabledCheckBox.IsChecked == true;
         Settings.CopilotVirtualKey = _copilotVirtualKey;
         Settings.CopilotTriggerVirtualKey = _copilotTriggerVirtualKey;
+        Settings.CopilotTriggerModifiers = _copilotTriggerModifiers;
 
         DialogResult = true;
         Close();

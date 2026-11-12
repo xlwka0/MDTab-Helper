@@ -30,9 +30,14 @@ public partial class TabletOverlayWindow : Window
     private readonly ObservableCollection<KeybindViewModel> _tabletKeybinds;
     private readonly DispatcherTimer _clockTimer;
     private bool _isInitialized = false;
-    private bool _webViewInitialized = false;
+    private bool _isLoadingSettingsUi = false;
     private bool _isPopulatingKeybindPanel = false;
     private bool _isUpdatingImagePropertiesUi = false;
+    private int _feedbackSessionId = 0;
+
+    private Task? _webViewEnvTask;
+    private Task? _webViewFullInitTask;
+    private CoreWebView2Environment? _webViewEnv;
 
     // Recording keybind flags
     private KeybindViewModel? _recordingKeybindEntry;
@@ -56,8 +61,6 @@ public partial class TabletOverlayWindow : Window
     private readonly UpdateService _updateService = new();
     private UpdateInfo? _availableUpdate;
     private CancellationTokenSource? _updateCts;
-    private bool _wasWebViewVisibleBeforeModal = false;
-    private bool _wasWebViewVisibleBeforeLock = false;
 
     public event EventHandler? SettingsSaved;
 
@@ -195,17 +198,6 @@ public partial class TabletOverlayWindow : Window
             LockscreenDateText.Text = now.ToString("dddd, d MMMM", culture);
         }
 
-        if (DutyTitleBarToggleBtn != null)
-        {
-            bool hasData = _currentDutyResult != null && _currentDutyResult.IsSuccess;
-            DutyTitleBarToggleBtn.Opacity = hasData ? 1.0 : 0.85;
-            DutyTitleBarToggleBtn.ToolTip = hasData
-                ? "Comută afișarea listei laterale de Medici la Datorie"
-                : "Medici Duty (Necesită conectare pe portal)";
-        }
-
-
-
         if (now.Minute % 10 == 0 && now.Second == 0)
         {
             _ = CheckForUpdatesSilentlyAsync();
@@ -214,15 +206,15 @@ public partial class TabletOverlayWindow : Window
 
     private string _pendingUrl = string.Empty;
 
-    private async void InitializeWebView(string? targetUrl = null)
+    private Task EnsureCoreWebView2CreatedAsync()
+    {
+        return _webViewEnvTask ??= CreateWebViewEnvironmentAndInitAsync();
+    }
+
+    private async Task CreateWebViewEnvironmentAndInitAsync()
     {
         try
         {
-            string dest = !string.IsNullOrWhiteSpace(targetUrl) 
-                ? targetUrl 
-                : (!string.IsNullOrWhiteSpace(_pendingUrl) ? _pendingUrl : _settings.TabletUrl);
-
-            // Set up a persistent User Data folder so sessions and logins are memorized
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string userFolder = Path.Combine(appData, "MDTab-Helper", "TabletCache");
             Directory.CreateDirectory(userFolder);
@@ -231,8 +223,25 @@ public partial class TabletOverlayWindow : Window
             {
                 AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist"
             };
-            var env = await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
-            await TabletWebView.EnsureCoreWebView2Async(env);
+            _webViewEnv ??= await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
+            await TabletWebView.EnsureCoreWebView2Async(_webViewEnv);
+        }
+        catch
+        {
+            _webViewEnvTask = null;
+            throw;
+        }
+    }
+
+    private async Task InitializeWebViewAsync(string? targetUrl = null)
+    {
+        try
+        {
+            string dest = !string.IsNullOrWhiteSpace(targetUrl)
+                ? targetUrl
+                : (!string.IsNullOrWhiteSpace(_pendingUrl) ? _pendingUrl : _settings.TabletUrl);
+
+            await EnsureCoreWebView2CreatedAsync();
 
             try
             {
@@ -268,7 +277,6 @@ public partial class TabletOverlayWindow : Window
                 _onDutyService.UpdateUserAgent(TabletWebView.CoreWebView2.Settings.UserAgent);
             }
 
-            _webViewInitialized = true;
             LoadingIndicator.Visibility = Visibility.Collapsed;
 
             // Wire up webview events
@@ -303,6 +311,7 @@ public partial class TabletOverlayWindow : Window
         }
         catch (Exception ex)
         {
+            _webViewFullInitTask = null;
             MessageBox.Show($"Eroare la inițializarea browserului: {ex.Message}\n\nAsigurați-vă că aveți Microsoft Edge WebView2 instalat.", "Eroare inițializare", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -734,6 +743,13 @@ public partial class TabletOverlayWindow : Window
             url = "https://" + url;
         }
 
+        _pendingUrl = url;
+        if (TabletWebView?.CoreWebView2 == null)
+        {
+            EnsureWebViewInitialized(url);
+            return;
+        }
+
         try
         {
             TabletWebView.Source = new Uri(url);
@@ -801,6 +817,9 @@ public partial class TabletOverlayWindow : Window
             StopDutyAutoRefresh();
             _dutyToastTimer?.Stop();
             _keepAliveTimer?.Stop();
+            try { _updateCts?.Cancel(); } catch { }
+            _updateCts?.Dispose();
+            _updateCts = null;
             base.OnClosing(e);
         }
         else
@@ -1578,6 +1597,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletGlobalKeybinds_Checked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.GlobalEnabled = true;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1585,6 +1605,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletGlobalKeybinds_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.GlobalEnabled = false;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1592,6 +1613,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletGlobalSounds_Checked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.SoundsEnabled = true;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1599,6 +1621,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletGlobalSounds_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.SoundsEnabled = false;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1859,7 +1882,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletDelays_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_isInitialized) return;
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         if (TabletDelayMsTextBox == null || TabletDelayChatOpenMsTextBox == null || 
             TabletDelayTextMsTextBox == null || TabletDelayEnterMsTextBox == null) return;
 
@@ -1878,6 +1901,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletStopHotkey_Checked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.StopHotkeyEnabled = true;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1885,6 +1909,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletStopHotkey_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.StopHotkeyEnabled = false;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1898,6 +1923,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletWt_Checked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.WindowToggle.Enabled = true;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1905,6 +1931,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletWt_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.WindowToggle.Enabled = false;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1918,14 +1945,27 @@ public partial class TabletOverlayWindow : Window
     private void PopulateWindowTitles()
     {
         TabletWtTitleComboBox.Items.Clear();
-        var processes = System.Diagnostics.Process.GetProcesses();
-        var titles = processes
-            .Select(p => p.MainWindowTitle)
-            .Where(t => !string.IsNullOrEmpty(t))
-            .Distinct()
-            .OrderBy(t => t);
+        var titles = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        EnumWindows((hWnd, lParam) =>
+        {
+            if (IsWindowVisible(hWnd))
+            {
+                var sb = new System.Text.StringBuilder(512);
+                if (GetWindowText(hWnd, sb, sb.Capacity) > 0)
+                {
+                    var title = sb.ToString();
+                    if (!string.IsNullOrWhiteSpace(title) &&
+                        !title.Contains("MDTab", StringComparison.OrdinalIgnoreCase) &&
+                        !title.Contains("MDHelper", StringComparison.OrdinalIgnoreCase))
+                    {
+                        titles.Add(title);
+                    }
+                }
+            }
+            return true;
+        }, IntPtr.Zero);
 
-        foreach (var title in titles)
+        foreach (var title in titles.OrderBy(t => t))
         {
             TabletWtTitleComboBox.Items.Add(title);
         }
@@ -1933,6 +1973,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletWtTitleComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         if (TabletWtTitleComboBox.SelectedItem is string selectedTitle)
         {
             _settings.WindowToggle.WindowTitle = selectedTitle;
@@ -1943,6 +1984,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletWtTitleComboBox_LostFocus(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.WindowToggle.WindowTitle = TabletWtTitleComboBox.Text;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1956,7 +1998,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletWtCoords_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_isInitialized) return;
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         if (TabletWtXTextBox == null || TabletWtYTextBox == null || TabletWtWidthTextBox == null || TabletWtHeightTextBox == null) return;
         
         _settings.WindowToggle.WindowTitle = TabletWtTitleComboBox.Text;
@@ -1976,6 +2018,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletOt_Checked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.OverlayToggleEnabled = true;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1983,6 +2026,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletOt_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.OverlayToggleEnabled = false;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -1996,7 +2040,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletStartWithWindows_Checked(object sender, RoutedEventArgs e)
     {
-        if (!_isInitialized) return;
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.StartWithWindows = true;
         StartupService.EnableStartup();
         _saveConfigCallback?.Invoke();
@@ -2004,7 +2048,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletStartWithWindows_Unchecked(object sender, RoutedEventArgs e)
     {
-        if (!_isInitialized) return;
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.StartWithWindows = false;
         StartupService.DisableStartup();
         _saveConfigCallback?.Invoke();
@@ -2012,6 +2056,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletCopilot_Checked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.CopilotEnabled = true;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -2019,6 +2064,7 @@ public partial class TabletOverlayWindow : Window
 
     private void TabletCopilot_Unchecked(object sender, RoutedEventArgs e)
     {
+        if (!_isInitialized || _isLoadingSettingsUi) return;
         _settings.CopilotEnabled = false;
         _saveConfigCallback?.Invoke();
         _refreshKeybindsCallback?.Invoke();
@@ -2046,24 +2092,31 @@ public partial class TabletOverlayWindow : Window
         UnlockTablet();
     }
 
+    private void RefreshWebViewAirspaceVisibility()
+    {
+        if (TabletWebView == null) return;
+
+        bool anyOverlayOpen =
+            (FeedbackModalGrid != null && FeedbackModalGrid.Visibility == Visibility.Visible) ||
+            (UpdateModalGrid != null && UpdateModalGrid.Visibility == Visibility.Visible) ||
+            (PanelSyncConsentModalGrid != null && PanelSyncConsentModalGrid.Visibility == Visibility.Visible) ||
+            (LockscreenGrid != null && LockscreenGrid.Visibility == Visibility.Visible);
+
+        bool webTabActive = WebTabContent != null && WebTabContent.Visibility == Visibility.Visible;
+        TabletWebView.Visibility = (!anyOverlayOpen && webTabActive)
+            ? Visibility.Visible
+            : Visibility.Hidden;
+    }
+
     private void LockTablet()
     {
-        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible)
-        {
-            _wasWebViewVisibleBeforeLock = true;
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Hidden;
-        }
-        else
-        {
-            _wasWebViewVisibleBeforeLock = false;
-        }
-
         if (LockscreenGreetingText != null)
         {
             LockscreenGreetingText.Text = GetTimeBasedGreeting(DateTime.Now);
         }
 
         LockscreenGrid.Visibility = Visibility.Visible;
+        RefreshWebViewAirspaceVisibility();
         StopDutyAutoRefresh();
     }
 
@@ -2087,12 +2140,7 @@ public partial class TabletOverlayWindow : Window
     private void UnlockTablet()
     {
         LockscreenGrid.Visibility = Visibility.Collapsed;
-
-        if (_wasWebViewVisibleBeforeLock)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeLock = false;
-        }
+        RefreshWebViewAirspaceVisibility();
 
         if (DutySidebarBorder != null && DutySidebarBorder.Visibility == Visibility.Visible)
         {
@@ -2150,22 +2198,16 @@ public partial class TabletOverlayWindow : Window
 
     private void OpenApp(Grid appGrid, bool showBrowserToolbar = false)
     {
-        if (appGrid == WebTabContent)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeModal = false;
-            _wasWebViewVisibleBeforeLock = false;
-        }
-
         DesktopGrid.Visibility = Visibility.Collapsed;
         WebTabContent.Visibility = Visibility.Collapsed;
         ToolsTabContent.Visibility = Visibility.Collapsed;
-
         SettingsTabContent.Visibility = Visibility.Collapsed;
 
         appGrid.Visibility = Visibility.Visible;
         NavToolbarBorder.Visibility = showBrowserToolbar ? Visibility.Visible : Visibility.Collapsed;
         TitleBarHomeBtn.Visibility = showBrowserToolbar ? Visibility.Collapsed : Visibility.Visible;
+
+        RefreshWebViewAirspaceVisibility();
     }
 
     private void CloseAllAppsAndGoHome()
@@ -2175,26 +2217,14 @@ public partial class TabletOverlayWindow : Window
             CancelUpdateBtn_Click(this, new RoutedEventArgs());
         }
 
-        if (_wasWebViewVisibleBeforeModal)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeModal = false;
-        }
-
-        if (_wasWebViewVisibleBeforeLock)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeLock = false;
-        }
-
         WebTabContent.Visibility = Visibility.Collapsed;
         ToolsTabContent.Visibility = Visibility.Collapsed;
-
         SettingsTabContent.Visibility = Visibility.Collapsed;
         NavToolbarBorder.Visibility = Visibility.Collapsed;
         TitleBarHomeBtn.Visibility = Visibility.Collapsed;
 
         DesktopGrid.Visibility = Visibility.Visible;
+        RefreshWebViewAirspaceVisibility();
     }
 
     private void EnsureWebViewInitialized(string? targetUrl = null)
@@ -2207,12 +2237,11 @@ public partial class TabletOverlayWindow : Window
         UrlTextBox.Text = dest;
         BackBtn.IsEnabled = true;
 
-        if (!_webViewInitialized)
+        if (_webViewFullInitTask == null)
         {
-            _webViewInitialized = true;
-            InitializeWebView(dest);
+            _webViewFullInitTask = InitializeWebViewAsync(dest);
         }
-        else
+        else if (TabletWebView?.CoreWebView2 != null)
         {
             NavigateTo(dest);
         }
@@ -2344,6 +2373,17 @@ public partial class TabletOverlayWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     private const uint MONITOR_DEFAULTTONEAREST = 2;
 
@@ -2539,16 +2579,26 @@ public partial class TabletOverlayWindow : Window
                         string value = kv[1].Trim();
                         string domain = ".b-zone.ro";
                         string path = "/";
+                        bool deleteCookie = false;
 
                         for (int i = 1; i < parts.Length; i++)
                         {
                             var p = parts[i].Trim();
                             if (p.StartsWith("Domain=", StringComparison.OrdinalIgnoreCase)) domain = p.Substring(7).Trim();
                             else if (p.StartsWith("Path=", StringComparison.OrdinalIgnoreCase)) path = p.Substring(5).Trim();
+                            else if (p.StartsWith("Max-Age=", StringComparison.OrdinalIgnoreCase) && int.TryParse(p.Substring(8).Trim(), out int maxAge) && maxAge <= 0) deleteCookie = true;
+                            else if (p.StartsWith("Expires=", StringComparison.OrdinalIgnoreCase) && DateTimeOffset.TryParse(p.Substring(8).Trim(), out var exp) && exp <= DateTimeOffset.UtcNow) deleteCookie = true;
                         }
 
                         var cookie = cookieManager.CreateCookie(name, value, domain, path);
-                        cookieManager.AddOrUpdateCookie(cookie);
+                        if (deleteCookie || string.IsNullOrEmpty(value))
+                        {
+                            cookieManager.DeleteCookie(cookie);
+                        }
+                        else
+                        {
+                            cookieManager.AddOrUpdateCookie(cookie);
+                        }
                     }
                 }
                 catch {}
@@ -2566,14 +2616,7 @@ public partial class TabletOverlayWindow : Window
             {
                 if (TabletWebView.CoreWebView2 == null)
                 {
-                    string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                    string userFolder = System.IO.Path.Combine(appData, "MDTab-Helper", "TabletCache");
-                    var envOptions = new CoreWebView2EnvironmentOptions
-                    {
-                        AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist"
-                    };
-                    var env = await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
-                    await TabletWebView.EnsureCoreWebView2Async(env);
+                    await EnsureCoreWebView2CreatedAsync();
                 }
 
                 if (TabletWebView.CoreWebView2 != null)
@@ -2768,25 +2811,15 @@ public partial class TabletOverlayWindow : Window
     {
         if (PanelSyncConsentModalGrid == null) return;
 
-        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible && TabletWebView != null && TabletWebView.Visibility == Visibility.Visible)
-        {
-            _wasWebViewVisibleBeforeModal = true;
-            TabletWebView.Visibility = Visibility.Hidden;
-        }
-
         PanelSyncConsentModalGrid.Visibility = Visibility.Visible;
+        RefreshWebViewAirspaceVisibility();
     }
 
     private void HidePanelSyncConsentModal()
     {
         if (PanelSyncConsentModalGrid == null) return;
         PanelSyncConsentModalGrid.Visibility = Visibility.Collapsed;
-
-        if (_wasWebViewVisibleBeforeModal)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeModal = false;
-        }
+        RefreshWebViewAirspaceVisibility();
     }
 
     private void PanelSyncConsentCancel_Click(object sender, RoutedEventArgs e)
@@ -2955,54 +2988,72 @@ public partial class TabletOverlayWindow : Window
         LoadWallpaper();
     }
 
+    public void ReloadSettingsFromConfig(KeybindSettings updatedSettings)
+    {
+        if (updatedSettings != _settings)
+        {
+            CopySettings(updatedSettings, _settings);
+        }
+        LoadSettingsIntoUi();
+    }
+
     private void LoadSettingsIntoUi()
     {
-        // Bind Keybinds
-        _tabletKeybinds.Clear();
-        foreach (var entry in _settings.Entries)
+        _isLoadingSettingsUi = true;
+        try
         {
-            _tabletKeybinds.Add(CreateKeybindViewModel(entry));
+            // Bind Keybinds
+            _tabletKeybinds.Clear();
+            foreach (var entry in _settings.Entries)
+            {
+                _tabletKeybinds.Add(CreateKeybindViewModel(entry));
+            }
+
+            TabletGlobalKeybindsEnabledCheckBox.IsChecked = _settings.GlobalEnabled;
+            TabletGlobalSoundsEnabledCheckBox.IsChecked = _settings.SoundsEnabled;
+            TabletDelayMsTextBox.Text = _settings.DelayMs.ToString();
+            TabletDelayChatOpenMsTextBox.Text = _settings.DelayAfterChatOpenMs.ToString();
+            TabletDelayTextMsTextBox.Text = _settings.DelayAfterTextMs.ToString();
+            TabletDelayEnterMsTextBox.Text = _settings.DelayAfterEnterMs.ToString();
+
+            TabletStopHotkeyEnabledCheckBox.IsChecked = _settings.StopHotkeyEnabled;
+            UpdateTabletStopKeyDisplay();
+
+            TabletWtEnabledCheckBox.IsChecked = _settings.WindowToggle.Enabled;
+            TabletWtTitleComboBox.Text = _settings.WindowToggle.WindowTitle;
+            TabletWtXTextBox.Text = _settings.WindowToggle.X.ToString();
+            TabletWtYTextBox.Text = _settings.WindowToggle.Y.ToString();
+            TabletWtWidthTextBox.Text = _settings.WindowToggle.Width.ToString();
+            TabletWtHeightTextBox.Text = _settings.WindowToggle.Height.ToString();
+            UpdateTabletWtKeyDisplay();
+
+            TabletOtEnabledCheckBox.IsChecked = _settings.OverlayToggleEnabled;
+            UpdateTabletOtKeyDisplay();
+
+            bool isStartup = StartupService.IsStartupEnabled();
+            _settings.StartWithWindows = isStartup;
+            TabletStartWithWindowsCheckBox.IsChecked = isStartup;
+
+            TabletCopilotEnabledCheckBox.IsChecked = _settings.CopilotEnabled;
+            UpdateTabletCopilotKeyDisplay();
+
+            if (SettingsCurrentVersionText != null)
+            {
+                SettingsCurrentVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
+            }
+
+            LoadWallpaper();
         }
-
-        TabletGlobalKeybindsEnabledCheckBox.IsChecked = _settings.GlobalEnabled;
-        TabletGlobalSoundsEnabledCheckBox.IsChecked = _settings.SoundsEnabled;
-        TabletDelayMsTextBox.Text = _settings.DelayMs.ToString();
-        TabletDelayChatOpenMsTextBox.Text = _settings.DelayAfterChatOpenMs.ToString();
-        TabletDelayTextMsTextBox.Text = _settings.DelayAfterTextMs.ToString();
-        TabletDelayEnterMsTextBox.Text = _settings.DelayAfterEnterMs.ToString();
-
-        TabletStopHotkeyEnabledCheckBox.IsChecked = _settings.StopHotkeyEnabled;
-        UpdateTabletStopKeyDisplay();
-
-        TabletWtEnabledCheckBox.IsChecked = _settings.WindowToggle.Enabled;
-        TabletWtTitleComboBox.Text = _settings.WindowToggle.WindowTitle;
-        TabletWtXTextBox.Text = _settings.WindowToggle.X.ToString();
-        TabletWtYTextBox.Text = _settings.WindowToggle.Y.ToString();
-        TabletWtWidthTextBox.Text = _settings.WindowToggle.Width.ToString();
-        TabletWtHeightTextBox.Text = _settings.WindowToggle.Height.ToString();
-        UpdateTabletWtKeyDisplay();
-
-        TabletOtEnabledCheckBox.IsChecked = _settings.OverlayToggleEnabled;
-        UpdateTabletOtKeyDisplay();
-
-        bool isStartup = StartupService.IsStartupEnabled();
-        _settings.StartWithWindows = isStartup;
-        TabletStartWithWindowsCheckBox.IsChecked = isStartup;
-
-        TabletCopilotEnabledCheckBox.IsChecked = _settings.CopilotEnabled;
-        UpdateTabletCopilotKeyDisplay();
-
-        if (SettingsCurrentVersionText != null)
+        finally
         {
-            SettingsCurrentVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
+            _isLoadingSettingsUi = false;
         }
-
-        LoadWallpaper();
     }
 
     private void CopySettings(KeybindSettings source, KeybindSettings dest)
     {
         dest.GlobalEnabled = source.GlobalEnabled;
+        dest.ChatOpenVirtualKey = source.ChatOpenVirtualKey;
         dest.SoundsEnabled = source.SoundsEnabled;
         dest.DelayMs = source.DelayMs;
         dest.DelayAfterChatOpenMs = source.DelayAfterChatOpenMs;
@@ -3242,16 +3293,6 @@ public partial class TabletOverlayWindow : Window
 
     private void ShowUpdateModal(UpdateInfo update)
     {
-        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible)
-        {
-            _wasWebViewVisibleBeforeModal = true;
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Hidden;
-        }
-        else
-        {
-            _wasWebViewVisibleBeforeModal = false;
-        }
-
         UpdateModalVersionText.Text = $"v{update.NewVersion}";
         if (update.FileSizeBytes > 0)
         {
@@ -3274,18 +3315,14 @@ public partial class TabletOverlayWindow : Window
         UpdateHintText.Text = "Aplicația se va reporni automat după descărcare.";
 
         UpdateModalGrid.Visibility = Visibility.Visible;
+        RefreshWebViewAirspaceVisibility();
     }
 
     private void CancelUpdateBtn_Click(object sender, RoutedEventArgs e)
     {
         _updateCts?.Cancel();
         UpdateModalGrid.Visibility = Visibility.Collapsed;
-
-        if (_wasWebViewVisibleBeforeModal)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeModal = false;
-        }
+        RefreshWebViewAirspaceVisibility();
     }
 
     private async void ConfirmUpdateBtn_Click(object sender, RoutedEventArgs e)
@@ -3330,7 +3367,7 @@ public partial class TabletOverlayWindow : Window
 
             await Task.Delay(800);
 
-            UpdateService.ApplyUpdateAndRestart(tempFile);
+            await Task.Run(() => UpdateService.ApplyUpdateAndRestart(tempFile));
         }
         catch (OperationCanceledException)
         {
@@ -3494,12 +3531,16 @@ public partial class TabletOverlayWindow : Window
     {
         if (FeedbackModalGrid == null) return;
 
-        if (WebTabContent != null && WebTabContent.Visibility == Visibility.Visible && TabletWebView != null && TabletWebView.Visibility == Visibility.Visible)
+        if (Visibility != Visibility.Visible)
         {
-            _wasWebViewVisibleBeforeModal = true;
-            TabletWebView.Visibility = Visibility.Hidden;
+            ShowTablet();
+        }
+        if (LockscreenGrid != null && LockscreenGrid.Visibility == Visibility.Visible)
+        {
+            UnlockTablet();
         }
 
+        _feedbackSessionId++;
         FeedbackDescTextBox.Text = "";
         FeedbackStatusText.Visibility = Visibility.Collapsed;
         FeedbackSubmitBtn.IsEnabled = true;
@@ -3507,19 +3548,16 @@ public partial class TabletOverlayWindow : Window
         FeedbackTypeBugRadio.IsChecked = true;
 
         FeedbackModalGrid.Visibility = Visibility.Visible;
+        RefreshWebViewAirspaceVisibility();
         FeedbackDescTextBox.Focus();
     }
 
     private void HideFeedbackModal()
     {
         if (FeedbackModalGrid == null) return;
+        _feedbackSessionId++;
         FeedbackModalGrid.Visibility = Visibility.Collapsed;
-
-        if (_wasWebViewVisibleBeforeModal)
-        {
-            if (TabletWebView != null) TabletWebView.Visibility = Visibility.Visible;
-            _wasWebViewVisibleBeforeModal = false;
-        }
+        RefreshWebViewAirspaceVisibility();
     }
 
     private void TabletOpenFeedbackBtn_Click(object sender, RoutedEventArgs e)
@@ -3534,6 +3572,7 @@ public partial class TabletOverlayWindow : Window
 
     private async void FeedbackSubmit_Click(object sender, RoutedEventArgs e)
     {
+        int sessionId = ++_feedbackSessionId;
         string reportType = "Bug / Problemă";
         if (FeedbackTypeSuggestionRadio.IsChecked == true)
         {
@@ -3554,6 +3593,11 @@ public partial class TabletOverlayWindow : Window
 
         var (success, msg) = await FeedbackService.SendFeedbackAsync(reportType, author, desc, attachDiagnostics);
 
+        if (sessionId != _feedbackSessionId || FeedbackModalGrid.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
         if (success)
         {
             FeedbackStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x10, 0xB9, 0x81));
@@ -3562,7 +3606,10 @@ public partial class TabletOverlayWindow : Window
             FeedbackSubmitBtn.Content = "Trimis cu succes!";
 
             await Task.Delay(1800);
-            HideFeedbackModal();
+            if (sessionId == _feedbackSessionId && FeedbackModalGrid.Visibility == Visibility.Visible)
+            {
+                HideFeedbackModal();
+            }
         }
         else
         {

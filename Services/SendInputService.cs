@@ -31,10 +31,45 @@ public sealed class SendInputService
 
     public Task TextAsync(string text)
     {
+        if (string.IsNullOrEmpty(text)) return Task.CompletedTask;
+
+        var inputs = new INPUT[text.Length * 2];
+        int idx = 0;
         foreach (var ch in text)
         {
-            SendUnicodeChar(ch);
+            inputs[idx++] = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                U = new InputUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = ch,
+                        dwFlags = KEYEVENTF_UNICODE,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+            inputs[idx++] = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                U = new InputUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = ch,
+                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
         }
+
+        Send(inputs);
         return Task.CompletedTask;
     }
 
@@ -71,51 +106,62 @@ public sealed class SendInputService
                vk == 0x90 || // Num Lock
                vk == 0x2C || // Print Screen
                vk == 0x13 || // Pause
-               vk == 0x6F;   // Numpad /
+               vk == 0x6F || // Numpad /
+               vk == 0xA3 || // Right Ctrl
+               vk == 0xA5 || // Right Alt
+               vk == 0x5B || // Left Win
+               vk == 0x5C || // Right Win
+               vk == 0x5D;   // Apps/Menu
+    }
+
+    private static INPUT CreateKeyInput(ushort vk, bool isKeyUp)
+    {
+        const uint MAPVK_VK_TO_VSC_EX = 4;
+        uint scanEx = MapVirtualKey(vk, MAPVK_VK_TO_VSC_EX);
+        if (scanEx == 0)
+        {
+            scanEx = MapVirtualKey(vk, 0);
+        }
+
+        var inp = new INPUT
+        {
+            type = INPUT_KEYBOARD
+        };
+        inp.U.ki.wVk = vk;
+        inp.U.ki.time = 0;
+        inp.U.ki.dwExtraInfo = IntPtr.Zero;
+
+        if (scanEx != 0)
+        {
+            inp.U.ki.wScan = (ushort)(scanEx & 0xFF);
+            inp.U.ki.dwFlags = KEYEVENTF_SCANCODE | (isKeyUp ? KEYEVENTF_KEYUP : 0u);
+            if (((scanEx >> 8) & 0xFF) == 0xE0 || IsExtendedKey(vk))
+            {
+                inp.U.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+            }
+        }
+        else
+        {
+            // Fallback to virtual-key injection when the current layout has no scan code
+            inp.U.ki.wScan = 0;
+            inp.U.ki.dwFlags = isKeyUp ? KEYEVENTF_KEYUP : 0u;
+            if (IsExtendedKey(vk))
+            {
+                inp.U.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+            }
+        }
+
+        return inp;
     }
 
     private static void KeyDown(ushort vk)
     {
-        uint scanCode = MapVirtualKey(vk, 0);
-        var inp = new INPUT();
-        inp.type = INPUT_KEYBOARD;
-        inp.U.ki.wVk = vk;
-        inp.U.ki.wScan = (ushort)(scanCode & 0xFF);
-        inp.U.ki.dwFlags = KEYEVENTF_SCANCODE;
-
-        if (IsExtendedKey(vk))
-        {
-            inp.U.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-        }
-
-        inp.U.ki.time = 0;
-        inp.U.ki.dwExtraInfo = IntPtr.Zero;
-
-        var arr = new INPUT[1];
-        arr[0] = inp;
-        Send(arr);
+        Send(new[] { CreateKeyInput(vk, isKeyUp: false) });
     }
 
     private static void KeyUp(ushort vk)
     {
-        uint scanCode = MapVirtualKey(vk, 0);
-        var inp = new INPUT();
-        inp.type = INPUT_KEYBOARD;
-        inp.U.ki.wVk = vk;
-        inp.U.ki.wScan = (ushort)(scanCode & 0xFF);
-        inp.U.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
-
-        if (IsExtendedKey(vk))
-        {
-            inp.U.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
-        }
-
-        inp.U.ki.time = 0;
-        inp.U.ki.dwExtraInfo = IntPtr.Zero;
-
-        var arr = new INPUT[1];
-        arr[0] = inp;
-        Send(arr);
+        Send(new[] { CreateKeyInput(vk, isKeyUp: true) });
     }
 
     public static void ForceKeyDown(ushort vk)
@@ -126,31 +172,6 @@ public sealed class SendInputService
     public static void ForceKeyUp(ushort vk)
     {
         KeyUp(vk);
-    }
-
-    private static void SendUnicodeChar(char ch)
-    {
-        var arr = new INPUT[2];
-
-        var down = new INPUT();
-        down.type = INPUT_KEYBOARD;
-        down.U.ki.wVk = 0;
-        down.U.ki.wScan = ch;
-        down.U.ki.dwFlags = KEYEVENTF_UNICODE;
-        down.U.ki.time = 0;
-        down.U.ki.dwExtraInfo = IntPtr.Zero;
-        arr[0] = down;
-
-        var up = new INPUT();
-        up.type = INPUT_KEYBOARD;
-        up.U.ki.wVk = 0;
-        up.U.ki.wScan = ch;
-        up.U.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-        up.U.ki.time = 0;
-        up.U.ki.dwExtraInfo = IntPtr.Zero;
-        arr[1] = up;
-
-        Send(arr);
     }
 
     private static void Send(INPUT[] inputs)

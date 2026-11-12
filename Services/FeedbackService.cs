@@ -20,6 +20,7 @@ public static class FeedbackService
         Convert.FromBase64String("aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTU3MDA2NjQ5Njc2MjE1OTExNC96bFFBQkFqR21UbGJWaTV2aFdUeE5BWlJjUEdhUjNaY09rMWJlSjBBNVFCdGpFbEw5YWtHYjVmV1FqbnNDZUlxOG5JTw=="));
 
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(12) };
+    private static readonly object _cooldownLock = new();
     private static DateTime _lastSubmissionTime = DateTime.MinValue;
     private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(25);
 
@@ -34,17 +35,23 @@ public static class FeedbackService
             return (false, "Te rugăm să oferi o descriere mai detaliată (minim 10 caractere).");
         }
 
-        var now = DateTime.UtcNow;
-        if (now - _lastSubmissionTime < Cooldown)
+        lock (_cooldownLock)
         {
-            int remaining = (int)(Cooldown - (now - _lastSubmissionTime)).TotalSeconds;
-            return (false, $"Te rugăm să aștepți încă {remaining} secunde înainte de a trimite un alt raport.");
+            var now = DateTime.UtcNow;
+            if (now - _lastSubmissionTime < Cooldown)
+            {
+                int remaining = Math.Max(1, (int)Math.Ceiling((Cooldown - (now - _lastSubmissionTime)).TotalSeconds));
+                return (false, $"Te rugăm să aștepți încă {remaining} secunde înainte de a trimite un alt raport.");
+            }
         }
 
         try
         {
+            string safeType = string.IsNullOrWhiteSpace(reportType) ? "Bug / Problemă" : reportType.Trim();
+            if (safeType.Length > 200) safeType = safeType[..197] + "...";
+
             int color;
-            switch (reportType.ToLowerInvariant())
+            switch (safeType.ToLowerInvariant())
             {
                 case "sugestie":
                 case "propunere":
@@ -63,18 +70,25 @@ public static class FeedbackService
             }
 
             string authorName = string.IsNullOrWhiteSpace(author) ? "Anonim / Nespecificat" : author.Trim();
-            string appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.7.2";
+            if (authorName.Length > 256) authorName = authorName[..253] + "...";
+
+            string safeDesc = description.Trim();
+            if (safeDesc.Length > 4000) safeDesc = safeDesc[..3997] + "...";
+
+            string appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.7.3";
 
             var fields = new List<object>
             {
                 new { name = "Autor", value = authorName, @inline = true },
-                new { name = "Tip Raport", value = reportType, @inline = true },
+                new { name = "Tip Raport", value = safeType, @inline = true },
                 new { name = "Versiune App", value = $"v{appVersion}", @inline = true }
             };
 
             if (attachDiagnostics)
             {
                 string osInfo = Environment.OSVersion.VersionString;
+                if (osInfo.Length > 256) osInfo = osInfo[..253] + "...";
+
                 string screenRes = "N/A";
                 try
                 {
@@ -92,9 +106,9 @@ public static class FeedbackService
 
             var embed = new Dictionary<string, object>
             {
-                ["title"] = $"Raport Nou: {reportType}",
+                ["title"] = $"Raport Nou: {safeType}",
                 ["color"] = color,
-                ["description"] = description.Trim(),
+                ["description"] = safeDesc,
                 ["fields"] = fields,
                 ["footer"] = new
                 {
@@ -117,10 +131,13 @@ public static class FeedbackService
             string json = JsonSerializer.Serialize(payload, jsonOptions);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync(WebhookUrl, content).ConfigureAwait(false);
+            using var response = await _httpClient.PostAsync(WebhookUrl, content).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
-                _lastSubmissionTime = DateTime.UtcNow;
+                lock (_cooldownLock)
+                {
+                    _lastSubmissionTime = DateTime.UtcNow;
+                }
                 return (true, "Raportul tău a fost trimis cu succes către echipa de dezvoltare! Îți mulțumim!");
             }
             else

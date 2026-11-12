@@ -152,7 +152,9 @@ public sealed class OnDutyService
     private const string ApiBandagesUrl = "https://md.b-zone.ro/api/bandaje";
     private const string ApiPingUrl = "https://md.b-zone.ro/api/medici/ping";
 
-    private static DateTime _lastPingSent = DateTime.MinValue;
+    private const string DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0";
+    private static volatile string _userAgent = DefaultUserAgent;
+    private static long _lastPingSentTicks = DateTime.MinValue.Ticks;
     private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(45);
 
     public Func<IEnumerable<string>, Task>? OnCookiesReceivedAsync { get; set; }
@@ -160,17 +162,25 @@ public sealed class OnDutyService
     public void UpdateUserAgent(string userAgent)
     {
         if (string.IsNullOrWhiteSpace(userAgent)) return;
-        try
+        _userAgent = userAgent.Trim();
+    }
+
+    private static void ApplyRequestHeaders(HttpRequestMessage request, string cookieHeader, bool includeOrigin = false)
+    {
+        request.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
+        request.Headers.TryAddWithoutValidation("Referer", "https://md.b-zone.ro/");
+        if (includeOrigin)
         {
-            _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+            request.Headers.TryAddWithoutValidation("Origin", "https://md.b-zone.ro");
         }
-        catch {}
+        request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+        request.Headers.TryAddWithoutValidation("User-Agent", _userAgent);
     }
 
     public async Task<bool> SendKeepAlivePingAsync(string cookieHeader, CancellationToken cancellationToken = default)
     {
-        if (DateTime.Now - _lastPingSent < PingInterval)
+        long lastPingTicks = Interlocked.Read(ref _lastPingSentTicks);
+        if (DateTime.UtcNow.Ticks - lastPingTicks < PingInterval.Ticks)
         {
             return true;
         }
@@ -178,10 +188,7 @@ public sealed class OnDutyService
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, ApiPingUrl);
-            request.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
-            request.Headers.TryAddWithoutValidation("Referer", "https://md.b-zone.ro/");
-            request.Headers.TryAddWithoutValidation("Origin", "https://md.b-zone.ro");
-            request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            ApplyRequestHeaders(request, cookieHeader, includeOrigin: true);
             request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -192,7 +199,7 @@ public sealed class OnDutyService
 
             if (response.IsSuccessStatusCode)
             {
-                _lastPingSent = DateTime.Now;
+                Interlocked.Exchange(ref _lastPingSentTicks, DateTime.UtcNow.Ticks);
                 return true;
             }
         }
@@ -251,9 +258,9 @@ public sealed class OnDutyService
     };
 
     private static readonly SemaphoreSlim _rosterLock = new(1, 1);
-    private static Dictionary<string, FactionDoctorRoster> _cachedRosterByCnp = new(StringComparer.OrdinalIgnoreCase);
-    private static DateTime _rosterLastFetched = DateTime.MinValue;
-        private static readonly TimeSpan RosterCacheLifetime = TimeSpan.FromMinutes(10);
+    private static volatile Dictionary<string, FactionDoctorRoster> _cachedRosterByCnp = new(StringComparer.OrdinalIgnoreCase);
+    private static long _rosterLastFetchedTicks = DateTime.MinValue.Ticks;
+    private static readonly TimeSpan RosterCacheLifetime = TimeSpan.FromMinutes(10);
 
     private static JsonSerializerOptions CreateJsonOptions()
     {
@@ -264,11 +271,6 @@ public sealed class OnDutyService
         };
         options.Converters.Add(new StringOrNumberConverter());
         return options;
-    }
-
-    static OnDutyService()
-    {
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0");
     }
 
     public static string FormatCallsign(string? callsign)
@@ -302,7 +304,8 @@ public sealed class OnDutyService
 
     private async Task<bool> EnsureRosterLoadedAsync(string cookieHeader, CancellationToken cancellationToken)
     {
-        if (_cachedRosterByCnp.Count > 0 && DateTime.Now - _rosterLastFetched < RosterCacheLifetime)
+        var cachedRoster = _cachedRosterByCnp;
+        if (cachedRoster.Count > 0 && DateTime.UtcNow.Ticks - Interlocked.Read(ref _rosterLastFetchedTicks) < RosterCacheLifetime.Ticks)
         {
             return true;
         }
@@ -310,15 +313,14 @@ public sealed class OnDutyService
         await _rosterLock.WaitAsync(cancellationToken);
         try
         {
-            if (_cachedRosterByCnp.Count > 0 && DateTime.Now - _rosterLastFetched < RosterCacheLifetime)
+            cachedRoster = _cachedRosterByCnp;
+            if (cachedRoster.Count > 0 && DateTime.UtcNow.Ticks - Interlocked.Read(ref _rosterLastFetchedTicks) < RosterCacheLifetime.Ticks)
             {
                 return true;
             }
 
             using var request = new HttpRequestMessage(HttpMethod.Get, ApiRosterUrl);
-            request.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
-            request.Headers.TryAddWithoutValidation("Referer", "https://md.b-zone.ro/");
-            request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            ApplyRequestHeaders(request, cookieHeader);
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (response.Headers.TryGetValues("Set-Cookie", out var setCookiesRoster) && OnCookiesReceivedAsync != null)
@@ -346,7 +348,7 @@ public sealed class OnDutyService
                 }
 
                 _cachedRosterByCnp = dict;
-                _rosterLastFetched = DateTime.Now;
+                Interlocked.Exchange(ref _rosterLastFetchedTicks, DateTime.UtcNow.Ticks);
                 return true;
             }
         }
@@ -367,9 +369,7 @@ public sealed class OnDutyService
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, ApiBandagesUrl);
-            request.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
-            request.Headers.TryAddWithoutValidation("Referer", "https://md.b-zone.ro/");
-            request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            ApplyRequestHeaders(request, cookieHeader);
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (response.Headers.TryGetValues("Set-Cookie", out var setCookiesRoster) && OnCookiesReceivedAsync != null)
@@ -423,9 +423,7 @@ public sealed class OnDutyService
             await EnsureRosterLoadedAsync(cookieHeader, cancellationToken);
 
             using var request = new HttpRequestMessage(HttpMethod.Get, ApiDutyUrl);
-            request.Headers.TryAddWithoutValidation("Cookie", cookieHeader);
-            request.Headers.TryAddWithoutValidation("Referer", "https://md.b-zone.ro/");
-            request.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            ApplyRequestHeaders(request, cookieHeader);
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (response.Headers.TryGetValues("Set-Cookie", out var setCookiesRoster) && OnCookiesReceivedAsync != null)
@@ -464,6 +462,7 @@ public sealed class OnDutyService
             var doctors = new List<OnDutyDoctor>();
             var seenCnps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var sessions = dutyData.ActiveSessions ?? new List<LiveDutySession>();
+            var roster = _cachedRosterByCnp;
 
             foreach (var session in sessions)
             {
@@ -476,7 +475,7 @@ public sealed class OnDutyService
                 int rankOrder = 99;
                 string rankColor = "#38BDF8";
 
-                if (_cachedRosterByCnp.TryGetValue(cnp, out var rosterEntry))
+                if (roster.TryGetValue(cnp, out var rosterEntry))
                 {
                     if (!string.IsNullOrWhiteSpace(rosterEntry.FullName))
                     {
@@ -519,7 +518,7 @@ public sealed class OnDutyService
                     int rankOrder = 99;
                     string rankColor = "#38BDF8";
 
-                    if (_cachedRosterByCnp.TryGetValue(cnp, out var rosterEntry))
+                    if (roster.TryGetValue(cnp, out var rosterEntry))
                     {
                         if (!string.IsNullOrWhiteSpace(rosterEntry.FullName))
                         {

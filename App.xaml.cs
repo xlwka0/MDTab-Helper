@@ -9,6 +9,7 @@ namespace MDHelper;
 public partial class App : Application
 {
     private static Mutex? _instanceMutex;
+    private static bool _ownsMutex;
     private const string MutexName = @"Local\MDTab-Helper-SingleInstance-Mutex";
 
     public static void ReleaseInstanceMutex()
@@ -17,7 +18,15 @@ public partial class App : Application
         {
             try
             {
-                _instanceMutex.ReleaseMutex();
+                if (_ownsMutex)
+                {
+                    _instanceMutex.ReleaseMutex();
+                    _ownsMutex = false;
+                }
+            }
+            catch { }
+            try
+            {
                 _instanceMutex.Dispose();
             }
             catch { }
@@ -52,9 +61,11 @@ public partial class App : Application
             createdNew = true;
         }
 
+        _ownsMutex = createdNew;
         if (!createdNew)
         {
             // Another instance is already running: silently exit immediately
+            ReleaseInstanceMutex();
             Shutdown();
             return;
         }
@@ -126,7 +137,11 @@ public partial class App : Application
     {
         try
         {
-            string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "crashlog.txt");
+            string logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "MDTab-Helper");
+            Directory.CreateDirectory(logDir);
+            string logPath = Path.Combine(logDir, "crashlog.txt");
             string logText = $"[{DateTime.Now}] Source: {source}\nMessage: {ex.Message}\nStackTrace:\n{ex.StackTrace}\n\nInnerException: {ex.InnerException?.Message}\n----------------------------------------\n";
             File.AppendAllText(logPath, logText);
         }
