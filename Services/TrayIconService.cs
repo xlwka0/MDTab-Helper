@@ -36,10 +36,17 @@ public sealed class TrayIconService : IDisposable
     public void Initialize(Window window, string tooltip, string? iconPath = null)
     {
         var helper = new WindowInteropHelper(window);
-        _hwnd = helper.EnsureHandle();
+        var hwnd = helper.EnsureHandle();
+        var source = HwndSource.FromHwnd(hwnd)
+            ?? throw new InvalidOperationException("Failed to create HwndSource for TrayIconService.");
+        Initialize(source, tooltip, iconPath);
+    }
 
-        _source = HwndSource.FromHwnd(_hwnd);
-        _source?.AddHook(WndProc);
+    public void Initialize(HwndSource source, string tooltip, string? iconPath = null)
+    {
+        _source = source ?? throw new ArgumentNullException(nameof(source));
+        _hwnd = _source.Handle;
+        _source.AddHook(WndProc);
 
         // Load Icon
         if (!string.IsNullOrEmpty(iconPath) && File.Exists(iconPath))

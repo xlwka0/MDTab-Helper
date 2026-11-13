@@ -10,18 +10,6 @@ public class KeybindEntry
     public bool Enabled { get; set; } = true;
 }
 
-public class WindowToggleSettings
-{
-    public bool Enabled { get; set; } = false;
-    public string WindowTitle { get; set; } = "MD.B-ZONE.RO";
-    public int HotkeyVirtualKey { get; set; } = 0xBD; // default: - (0xBD = VK_OEM_MINUS)
-    public uint HotkeyModifiers { get; set; } = 0x0012; // default: RightCtrl (0x0010 | 0x0002)
-    public int X { get; set; } = 100;
-    public int Y { get; set; } = 100;
-    public int Width { get; set; } = 1024;
-    public int Height { get; set; } = 768;
-}
-
 public class KeybindSettings
 {
     public bool GlobalEnabled { get; set; } = false;
@@ -40,8 +28,6 @@ public class KeybindSettings
         new() { Name = "Keybind 1", HotkeyVirtualKey = 0x31, Script = "/me exemplu 1" }, // '1'
 
     };
-
-    public WindowToggleSettings WindowToggle { get; set; } = new();
 
     public bool OverlayToggleEnabled { get; set; } = false;
     public int OverlayToggleVirtualKey { get; set; } = 0xC0; // default: ` (0xC0 = VK_OEM_3)

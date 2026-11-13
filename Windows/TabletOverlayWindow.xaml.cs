@@ -43,7 +43,6 @@ public partial class TabletOverlayWindow : Window
     private KeybindViewModel? _recordingKeybindEntry;
     private bool _isRecordingTabletKeybind = false;
     private bool _isRecordingTabletStopKey = false;
-    private bool _isRecordingTabletWtKey = false;
     private bool _isRecordingTabletOtKey = false;
     private bool _isRecordingTabletCopilotKey = false;
     private bool _isRecordingTabletCopilotTrigger = false;
@@ -126,14 +125,6 @@ public partial class TabletOverlayWindow : Window
         UpdateTabletStopKeyDisplay();
 
         // Load system settings
-        TabletWtEnabledCheckBox.IsChecked = _settings.WindowToggle.Enabled;
-        TabletWtTitleComboBox.Text = _settings.WindowToggle.WindowTitle;
-        TabletWtXTextBox.Text = _settings.WindowToggle.X.ToString();
-        TabletWtYTextBox.Text = _settings.WindowToggle.Y.ToString();
-        TabletWtWidthTextBox.Text = _settings.WindowToggle.Width.ToString();
-        TabletWtHeightTextBox.Text = _settings.WindowToggle.Height.ToString();
-        UpdateTabletWtKeyDisplay();
-
         TabletOtEnabledCheckBox.IsChecked = _settings.OverlayToggleEnabled;
         UpdateTabletOtKeyDisplay();
 
@@ -473,7 +464,7 @@ public partial class TabletOverlayWindow : Window
             return;
         }
 
-        if (_isRecordingTabletKeybind || _isRecordingTabletStopKey || _isRecordingTabletWtKey || 
+        if (_isRecordingTabletKeybind || _isRecordingTabletStopKey || 
             _isRecordingTabletOtKey || _isRecordingTabletCopilotKey || _isRecordingTabletCopilotTrigger)
         {
             e.Handled = true;
@@ -536,16 +527,6 @@ public partial class TabletOverlayWindow : Window
                 _isRecordingTabletStopKey = false;
                 TabletRecordStopKeyBtn.Content = "🔘 Set Key";
                 UpdateTabletStopKeyDisplay();
-                _saveConfigCallback?.Invoke();
-                _refreshKeybindsCallback?.Invoke();
-            }
-            else if (_isRecordingTabletWtKey)
-            {
-                _settings.WindowToggle.HotkeyVirtualKey = vk;
-                _settings.WindowToggle.HotkeyModifiers = modifiers;
-                _isRecordingTabletWtKey = false;
-                TabletRecordWtKeyBtn.Content = "🔴 Set Key";
-                UpdateTabletWtKeyDisplay();
                 _saveConfigCallback?.Invoke();
                 _refreshKeybindsCallback?.Invoke();
             }
@@ -627,7 +608,7 @@ public partial class TabletOverlayWindow : Window
 
     public void ToggleVisibility()
     {
-        if (Visibility == Visibility.Visible)
+        if (Visibility == Visibility.Visible && WindowState != WindowState.Minimized)
         {
             HideTablet();
         }
@@ -640,6 +621,10 @@ public partial class TabletOverlayWindow : Window
     public void ShowTablet()
     {
         Visibility = Visibility.Visible;
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
         if (TabletImagesDataGrid?.SelectedItem is OverlayImage selectedImg)
         {
             PopulateTabletPropertiesPanel(selectedImg);
@@ -1489,7 +1474,7 @@ public partial class TabletOverlayWindow : Window
         {
             foreach (var filePath in dialog.FileNames)
             {
-                var relativePath = MainWindow.GetRelativePath(filePath);
+                var relativePath = ConfigurationService.GetRelativePath(filePath);
                 var image = new OverlayImage
                 {
                     FilePath = relativePath,
@@ -1519,27 +1504,6 @@ public partial class TabletOverlayWindow : Window
         if ((_settings.StopHotkeyModifiers & 0x0008) != 0) parts.Add("Win");
         parts.Add(KeybindViewModel.VkToKeyName(_settings.StopHotkeyVirtualKey));
         TabletStopKeyText.Text = string.Join(" + ", parts);
-    }
-
-    private void UpdateTabletWtKeyDisplay()
-    {
-        var parts = new System.Collections.Generic.List<string>();
-        if ((_settings.WindowToggle.HotkeyModifiers & 0x0010) != 0) parts.Add("RightCtrl");
-        else if ((_settings.WindowToggle.HotkeyModifiers & 0x0020) != 0) parts.Add("LeftCtrl");
-        else if ((_settings.WindowToggle.HotkeyModifiers & 0x0002) != 0) parts.Add("Ctrl");
-
-        if ((_settings.WindowToggle.HotkeyModifiers & 0x0040) != 0) parts.Add("RightAlt");
-        else if ((_settings.WindowToggle.HotkeyModifiers & 0x0080) != 0) parts.Add("LeftAlt");
-        else if ((_settings.WindowToggle.HotkeyModifiers & 0x0001) != 0) parts.Add("Alt");
-
-        if ((_settings.WindowToggle.HotkeyModifiers & 0x0100) != 0) parts.Add("RightShift");
-        else if ((_settings.WindowToggle.HotkeyModifiers & 0x0200) != 0) parts.Add("LeftShift");
-        else if ((_settings.WindowToggle.HotkeyModifiers & 0x0004) != 0) parts.Add("Shift");
-
-        if ((_settings.WindowToggle.HotkeyModifiers & 0x0008) != 0) parts.Add("Win");
-
-        parts.Add(KeybindViewModel.VkToKeyName(_settings.WindowToggle.HotkeyVirtualKey));
-        TabletWtKeyText.Text = string.Join(" + ", parts);
     }
 
     private void UpdateTabletOtKeyDisplay()
@@ -1921,101 +1885,6 @@ public partial class TabletOverlayWindow : Window
         TabletRecordStopKeyBtn.Content = "Listening...";
     }
 
-    private void TabletWt_Checked(object sender, RoutedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        _settings.WindowToggle.Enabled = true;
-        _saveConfigCallback?.Invoke();
-        _refreshKeybindsCallback?.Invoke();
-    }
-
-    private void TabletWt_Unchecked(object sender, RoutedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        _settings.WindowToggle.Enabled = false;
-        _saveConfigCallback?.Invoke();
-        _refreshKeybindsCallback?.Invoke();
-    }
-
-    private void TabletWtTitleComboBox_DropDownOpened(object sender, EventArgs e)
-    {
-        PopulateWindowTitles();
-    }
-
-    private void PopulateWindowTitles()
-    {
-        TabletWtTitleComboBox.Items.Clear();
-        var titles = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
-        EnumWindows((hWnd, lParam) =>
-        {
-            if (IsWindowVisible(hWnd))
-            {
-                var sb = new System.Text.StringBuilder(512);
-                if (GetWindowText(hWnd, sb, sb.Capacity) > 0)
-                {
-                    var title = sb.ToString();
-                    if (!string.IsNullOrWhiteSpace(title) &&
-                        !title.Contains("MDTab", StringComparison.OrdinalIgnoreCase) &&
-                        !title.Contains("MDHelper", StringComparison.OrdinalIgnoreCase))
-                    {
-                        titles.Add(title);
-                    }
-                }
-            }
-            return true;
-        }, IntPtr.Zero);
-
-        foreach (var title in titles.OrderBy(t => t))
-        {
-            TabletWtTitleComboBox.Items.Add(title);
-        }
-    }
-
-    private void TabletWtTitleComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        if (TabletWtTitleComboBox.SelectedItem is string selectedTitle)
-        {
-            _settings.WindowToggle.WindowTitle = selectedTitle;
-            _saveConfigCallback?.Invoke();
-            _refreshKeybindsCallback?.Invoke();
-        }
-    }
-
-    private void TabletWtTitleComboBox_LostFocus(object sender, RoutedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        _settings.WindowToggle.WindowTitle = TabletWtTitleComboBox.Text;
-        _saveConfigCallback?.Invoke();
-        _refreshKeybindsCallback?.Invoke();
-    }
-
-    private void TabletRecordWtKeyBtn_Click(object sender, RoutedEventArgs e)
-    {
-        _isRecordingTabletWtKey = true;
-        TabletRecordWtKeyBtn.Content = "Listening...";
-    }
-
-    private void TabletWtCoords_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        if (TabletWtXTextBox == null || TabletWtYTextBox == null || TabletWtWidthTextBox == null || TabletWtHeightTextBox == null) return;
-        
-        _settings.WindowToggle.WindowTitle = TabletWtTitleComboBox.Text;
-
-        if (int.TryParse(TabletWtXTextBox.Text, out var x))
-            _settings.WindowToggle.X = x;
-        if (int.TryParse(TabletWtYTextBox.Text, out var y))
-            _settings.WindowToggle.Y = y;
-        if (int.TryParse(TabletWtWidthTextBox.Text, out var w))
-            _settings.WindowToggle.Width = w;
-        if (int.TryParse(TabletWtHeightTextBox.Text, out var h))
-            _settings.WindowToggle.Height = h;
-
-        _saveConfigCallback?.Invoke();
-        _refreshKeybindsCallback?.Invoke();
-    }
-
     private void TabletOt_Checked(object sender, RoutedEventArgs e)
     {
         if (!_isInitialized || _isLoadingSettingsUi) return;
@@ -2373,17 +2242,6 @@ public partial class TabletOverlayWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
-
-    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     private const uint MONITOR_DEFAULTTONEAREST = 2;
 
@@ -3019,14 +2877,6 @@ public partial class TabletOverlayWindow : Window
             TabletStopHotkeyEnabledCheckBox.IsChecked = _settings.StopHotkeyEnabled;
             UpdateTabletStopKeyDisplay();
 
-            TabletWtEnabledCheckBox.IsChecked = _settings.WindowToggle.Enabled;
-            TabletWtTitleComboBox.Text = _settings.WindowToggle.WindowTitle;
-            TabletWtXTextBox.Text = _settings.WindowToggle.X.ToString();
-            TabletWtYTextBox.Text = _settings.WindowToggle.Y.ToString();
-            TabletWtWidthTextBox.Text = _settings.WindowToggle.Width.ToString();
-            TabletWtHeightTextBox.Text = _settings.WindowToggle.Height.ToString();
-            UpdateTabletWtKeyDisplay();
-
             TabletOtEnabledCheckBox.IsChecked = _settings.OverlayToggleEnabled;
             UpdateTabletOtKeyDisplay();
 
@@ -3062,15 +2912,6 @@ public partial class TabletOverlayWindow : Window
         dest.StopHotkeyEnabled = source.StopHotkeyEnabled;
         dest.StopHotkeyVirtualKey = source.StopHotkeyVirtualKey;
         dest.StopHotkeyModifiers = source.StopHotkeyModifiers;
-
-        dest.WindowToggle.Enabled = source.WindowToggle.Enabled;
-        dest.WindowToggle.WindowTitle = source.WindowToggle.WindowTitle;
-        dest.WindowToggle.X = source.WindowToggle.X;
-        dest.WindowToggle.Y = source.WindowToggle.Y;
-        dest.WindowToggle.Width = source.WindowToggle.Width;
-        dest.WindowToggle.Height = source.WindowToggle.Height;
-        dest.WindowToggle.HotkeyVirtualKey = source.WindowToggle.HotkeyVirtualKey;
-        dest.WindowToggle.HotkeyModifiers = source.WindowToggle.HotkeyModifiers;
 
         dest.OverlayToggleEnabled = source.OverlayToggleEnabled;
         dest.OverlayToggleVirtualKey = source.OverlayToggleVirtualKey;
@@ -3186,9 +3027,9 @@ public partial class TabletOverlayWindow : Window
         if (result == MessageBoxResult.Yes)
         {
             _saveConfigCallback?.Invoke();
-            if (System.Windows.Application.Current.MainWindow is MainWindow mw)
+            if (System.Windows.Application.Current is App app)
             {
-                mw.ExitApplicationDirectly();
+                app.ExitApplication();
             }
             else
             {

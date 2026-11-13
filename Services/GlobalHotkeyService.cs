@@ -18,12 +18,21 @@ public sealed class GlobalHotkeyService : IDisposable
 
     public void Initialize(WindowInteropHelper window)
     {
+        var source = HwndSource.FromHwnd(window.Handle);
+        if (source == null)
+            throw new InvalidOperationException("Failed to get HwndSource.");
+
+        Initialize(source);
+    }
+
+    public void Initialize(HwndSource source)
+    {
         if (_hooked) return;
 
-        _hwnd = window.Handle;
-        _source = HwndSource.FromHwnd(window.Handle);
-        if (_source == null)
-            throw new InvalidOperationException("Failed to get HwndSource.");
+        _source = source ?? throw new ArgumentNullException(nameof(source));
+        _hwnd = _source.Handle;
+        if (_hwnd == IntPtr.Zero)
+            throw new InvalidOperationException("Failed to get HwndSource handle.");
 
         _source.AddHook(WndProc);
         _hooked = true;

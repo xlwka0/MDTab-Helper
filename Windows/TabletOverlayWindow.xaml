@@ -1214,71 +1214,10 @@
                                 <!-- Content Scroll Panel -->
                                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="20,0,20,20">
                                     <StackPanel>
-                                        <!-- Card 1: Display Control Toggle -->
+                                        <!-- Card 1: Windows Startup -->
                                         <Border Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,0,0,15">
                                             <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="12"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="12"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
-
-                                                <CheckBox x:Name="TabletWtEnabledCheckBox" Grid.Row="0" Content="Enable Display Control (Fereastră Target)" Foreground="White" FontSize="14" FontWeight="Bold" Checked="TabletWt_Checked" Unchecked="TabletWt_Unchecked"/>
-
-                                                <Grid Grid.Row="2">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="15"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="20"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="10"/>
-                                                        <ColumnDefinition Width="100"/>
-                                                        <ColumnDefinition Width="10"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <TextBlock Grid.Column="0" Text="Titlu Fereastră:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
-                                                    <ComboBox x:Name="TabletWtTitleComboBox" Grid.Column="2" Height="32" IsEditable="True" Style="{x:Null}" DropDownOpened="TabletWtTitleComboBox_DropDownOpened" SelectionChanged="TabletWtTitleComboBox_SelectionChanged" LostFocus="TabletWtTitleComboBox_LostFocus"/>
-
-                                                    <TextBlock Grid.Column="4" Text="Tastă Toggle:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
-                                                    <Button x:Name="TabletRecordWtKeyBtn" Grid.Column="6" Content="🔴 Set Key" Height="32" Style="{StaticResource TabletBtnStyle}" Click="TabletRecordWtKeyBtn_Click"/>
-                                                    <TextBlock x:Name="TabletWtKeyText" Grid.Column="8" Text="None" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
-                                                </Grid>
-
-                                                <Grid Grid.Row="4">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="10"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="20"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="10"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="20"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="10"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="20"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="10"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <TextBlock Grid.Column="0" Text="X:" Foreground="#ccc" VerticalAlignment="Center"/>
-                                                    <TextBox x:Name="TabletWtXTextBox" Grid.Column="2" Height="32" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletWtCoords_TextChanged"/>
-
-                                                    <TextBlock Grid.Column="4" Text="Y:" Foreground="#ccc" VerticalAlignment="Center"/>
-                                                    <TextBox x:Name="TabletWtYTextBox" Grid.Column="6" Height="32" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletWtCoords_TextChanged"/>
-
-                                                    <TextBlock Grid.Column="8" Text="Width:" Foreground="#ccc" VerticalAlignment="Center"/>
-                                                    <TextBox x:Name="TabletWtWidthTextBox" Grid.Column="10" Height="32" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletWtCoords_TextChanged"/>
-
-                                                    <TextBlock Grid.Column="12" Text="Height:" Foreground="#ccc" VerticalAlignment="Center"/>
-                                                    <TextBox x:Name="TabletWtHeightTextBox" Grid.Column="14" Height="32" Style="{StaticResource ModernTextBoxStyle}" TextChanged="TabletWtCoords_TextChanged"/>
-                                                </Grid>
+                                                <CheckBox x:Name="TabletStartWithWindowsCheckBox" Content="Start with Windows (Lansare automată la pornire PC)" Foreground="White" FontSize="14" FontWeight="Bold" Checked="TabletStartWithWindows_Checked" Unchecked="TabletStartWithWindows_Unchecked"/>
                                             </Grid>
                                         </Border>
 
@@ -1300,13 +1239,6 @@
                                                 <TextBlock Grid.Column="2" Text="Hotkey:" Foreground="#ccc" FontSize="13" VerticalAlignment="Center"/>
                                                 <Button x:Name="TabletRecordOtKeyBtn" Grid.Column="4" Content="🔴 Set Key" Height="32" Style="{StaticResource TabletBtnStyle}" Click="TabletRecordOtKeyBtn_Click"/>
                                                 <TextBlock x:Name="TabletOtKeyText" Grid.Column="6" Text="None" Foreground="#ff2d55" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Card 3: Windows Startup -->
-                                        <Border Background="#15152a" BorderBrush="#252540" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,0,0,15">
-                                            <Grid>
-                                                <CheckBox x:Name="TabletStartWithWindowsCheckBox" Content="Start with Windows (Lansare automată la pornire PC)" Foreground="White" FontSize="14" FontWeight="Bold" Checked="TabletStartWithWindows_Checked" Unchecked="TabletStartWithWindows_Unchecked"/>
                                             </Grid>
                                         </Border>
 

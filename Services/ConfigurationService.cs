@@ -219,4 +219,19 @@ public class ConfigurationService
             return null;
         }
     }
+
+    public static string GetRelativePath(string fullPath)
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        if (!baseDir.EndsWith(Path.DirectorySeparatorChar.ToString()))
+        {
+            baseDir += Path.DirectorySeparatorChar;
+        }
+
+        if (fullPath.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return fullPath.Substring(baseDir.Length);
+        }
+        return fullPath;
+    }
 }

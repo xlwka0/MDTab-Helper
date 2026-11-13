@@ -11,7 +11,6 @@ namespace MDHelper.Services;
 
 public sealed class KeybindOrchestrator : IDisposable
 {
-    private const int WINDOW_TOGGLE_HOTKEY_ID = 9999;
     private const int OVERLAY_TOGGLE_HOTKEY_ID = 9998;
     private const int STOP_TOGGLE_HOTKEY_ID = 9997;
     private const int TABLET_TOGGLE_HOTKEY_ID = 9996;
@@ -21,7 +20,7 @@ public sealed class KeybindOrchestrator : IDisposable
     private CancellationTokenSource? _runCts;
     private readonly Dictionary<int, KeybindEntry> _entryMap = new(); // hotkeyId -> entry
     private int _nextHotkeyId = KEYBIND_ID_BASE;
-    private IntPtr _previousActiveWindow = IntPtr.Zero;
+    private HwndSource? _hostSource;
 
     public KeybindSettings Settings { get; private set; }
 
@@ -37,31 +36,32 @@ public sealed class KeybindOrchestrator : IDisposable
         _hotkey.Triggered += Hotkey_Triggered;
     }
 
-    public void Initialize(Window window)
+    public void Initialize(HwndSource source)
     {
-        var helper = new WindowInteropHelper(window);
-        if (helper.Handle == IntPtr.Zero) return;
-        
-        _hotkey.Initialize(helper);
-        RegisterAll(window);
+        _hostSource = source ?? throw new ArgumentNullException(nameof(source));
+        if (_hostSource.Handle == IntPtr.Zero) return;
+
+        _hotkey.Initialize(_hostSource);
+        RegisterAll();
     }
 
-    public void Apply(Window window, KeybindSettings newSettings)
+    public void Apply(KeybindSettings newSettings)
     {
+        if (_hostSource == null || _hostSource.Handle == IntPtr.Zero) return;
+
         UnregisterAll();
         Settings = newSettings;
         SoundService.Enabled = Settings.SoundsEnabled;
         SettingsChanged?.Invoke(this, EventArgs.Empty);
 
-        RegisterAll(window);
+        RegisterAll();
     }
 
-    private void RegisterAll(Window window)
+    private void RegisterAll()
     {
-        var helper = new WindowInteropHelper(window);
-        if (helper.Handle == IntPtr.Zero) return;
-        
-        _hotkey.Initialize(helper);
+        if (_hostSource == null || _hostSource.Handle == IntPtr.Zero) return;
+
+        _hotkey.Initialize(_hostSource);
 
         _entryMap.Clear();
         _nextHotkeyId = KEYBIND_ID_BASE;
@@ -84,18 +84,6 @@ public sealed class KeybindOrchestrator : IDisposable
                 {
                     // Skip entries that fail to register
                 }
-            }
-        }
-
-        if (Settings.WindowToggle != null && Settings.WindowToggle.Enabled)
-        {
-            try
-            {
-                _hotkey.Register(WINDOW_TOGGLE_HOTKEY_ID, (Settings.WindowToggle.HotkeyModifiers & 0x000F) | 0x4000, Settings.WindowToggle.HotkeyVirtualKey);
-            }
-            catch
-            {
-                // Skip if registration fails
             }
         }
 
@@ -155,15 +143,6 @@ public sealed class KeybindOrchestrator : IDisposable
 
     private async void Hotkey_Triggered(object? sender, int hotkeyId)
     {
-        if (hotkeyId == WINDOW_TOGGLE_HOTKEY_ID)
-        {
-            if (Settings.WindowToggle != null && !AreSideModifiersSatisfied(Settings.WindowToggle.HotkeyModifiers))
-                return;
-
-            ToggleExternalWindow();
-            return;
-        }
-
         if (hotkeyId == OVERLAY_TOGGLE_HOTKEY_ID)
         {
             if (!AreSideModifiersSatisfied(Settings.OverlayToggleModifiers))
@@ -328,27 +307,6 @@ public sealed class KeybindOrchestrator : IDisposable
     }
 
     [DllImport("user32.dll")]
-    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool IsWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
@@ -360,89 +318,5 @@ public sealed class KeybindOrchestrator : IDisposable
     public static bool IsGta5Foreground()
     {
         return GameProcessHelper.IsGameForeground();
-    }
-
-    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-    private const int SW_HIDE = 0;
-    private const int SW_SHOW = 5;
-    private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
-    private const uint SWP_SHOWWINDOW = 0x0040;
-
-    private void ToggleExternalWindow()
-    {
-        if (Settings.WindowToggle == null) return;
-        var targetTitle = Settings.WindowToggle.WindowTitle;
-        if (string.IsNullOrWhiteSpace(targetTitle)) return;
-
-        IntPtr hWnd = FindWindowByTitleSubstring(targetTitle);
-        if (hWnd == IntPtr.Zero)
-        {
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                MessageBox.Show($"Could not find window containing: '{targetTitle}'", "Window Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
-            });
-            return;
-        }
-
-        if (IsWindowVisible(hWnd))
-        {
-            ShowWindow(hWnd, SW_HIDE);
-            SoundService.PlayOverlayHide();
-            
-            // Restore focus to previous foreground window
-            if (_previousActiveWindow != IntPtr.Zero && IsWindow(_previousActiveWindow))
-            {
-                SetForegroundWindow(_previousActiveWindow);
-                _previousActiveWindow = IntPtr.Zero;
-            }
-        }
-        else
-        {
-            // Save current foreground window before showing Chrome
-            IntPtr currentForeground = GetForegroundWindow();
-            if (currentForeground != IntPtr.Zero && currentForeground != hWnd)
-            {
-                _previousActiveWindow = currentForeground;
-            }
-
-            // Show window
-            ShowWindow(hWnd, SW_SHOW);
-            SoundService.PlayOverlayShow();
-            
-            // Resize and move to configured position, make it Topmost
-            SetWindowPos(
-                hWnd, 
-                HWND_TOPMOST, 
-                Settings.WindowToggle.X, 
-                Settings.WindowToggle.Y, 
-                Settings.WindowToggle.Width, 
-                Settings.WindowToggle.Height, 
-                SWP_SHOWWINDOW
-            );
-            
-            // Bring to foreground
-            SetForegroundWindow(hWnd);
-        }
-    }
-
-    private static IntPtr FindWindowByTitleSubstring(string substring)
-    {
-        IntPtr foundHwnd = IntPtr.Zero;
-        EnumWindows((hWnd, lParam) =>
-        {
-            var sb = new System.Text.StringBuilder(512);
-            GetWindowText(hWnd, sb, sb.Capacity);
-            var title = sb.ToString();
-
-            if (title.Contains(substring, StringComparison.OrdinalIgnoreCase))
-            {
-                foundHwnd = hWnd;
-                return false; // Stop enumeration
-            }
-            return true; // Continue enumeration
-        }, IntPtr.Zero);
-
-        return foundHwnd;
     }
 }

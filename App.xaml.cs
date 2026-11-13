@@ -11,6 +11,7 @@ public partial class App : Application
     private static Mutex? _instanceMutex;
     private static bool _ownsMutex;
     private const string MutexName = @"Local\MDTab-Helper-SingleInstance-Mutex";
+    private MDHelper.Services.AppController? _appController;
 
     public static void ReleaseInstanceMutex()
     {
@@ -82,10 +83,7 @@ public partial class App : Application
         // 4. Windows Shutdown / Logoff (Ensures all configuration is saved before OS terminates process)
         SessionEnding += (s, args) =>
         {
-            if (MainWindow is MDHelper.Windows.MainWindow mw)
-            {
-                mw.PrepareForExit();
-            }
+            _appController?.FlushConfigurationToDisk();
         };
 
         // Enable SustainedLowLatency GC to eliminate micro-stutters in-game
@@ -99,15 +97,23 @@ public partial class App : Application
 
         MDHelper.Services.UpdateService.CleanupOldUpdateFiles();
 
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-        // Instantiate MainWindow silently in background (does not call Show)
-        var mainWindow = new MDHelper.Windows.MainWindow();
-        MainWindow = mainWindow;
+        _appController = new MDHelper.Services.AppController();
+        _appController.Start();
+    }
+
+    public void ExitApplication()
+    {
+        _appController?.Dispose();
+        _appController = null;
+        Shutdown();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _appController?.Dispose();
+        _appController = null;
         ReleaseInstanceMutex();
         base.OnExit(e);
     }
