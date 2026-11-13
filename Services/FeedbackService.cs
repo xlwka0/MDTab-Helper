@@ -85,7 +85,7 @@ public static class FeedbackService
                 string safeDesc = description.Trim();
                 if (safeDesc.Length > 4000) safeDesc = safeDesc[..3997] + "...";
 
-                string appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.7.3";
+                string appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.7.4";
 
                 var fields = new List<object>
                 {

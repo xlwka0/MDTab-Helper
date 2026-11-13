@@ -31,7 +31,7 @@ public class UpdateService
         {
             Timeout = TimeSpan.FromSeconds(20)
         };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.7.3");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.7.4");
         return client;
     }
 
@@ -43,7 +43,7 @@ public class UpdateService
         {
             return $"{ver.Major}.{ver.Minor}.{ver.Build}";
         }
-        return "2.7.3";
+        return "2.7.4";
     }
 
     public async Task<UpdateInfo> CheckForUpdatesAsync()
