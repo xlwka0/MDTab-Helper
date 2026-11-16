@@ -44,8 +44,6 @@ public partial class TabletOverlayWindow : Window
     private bool _isRecordingTabletKeybind = false;
     private bool _isRecordingTabletStopKey = false;
     private bool _isRecordingTabletOtKey = false;
-    private bool _isRecordingTabletCopilotKey = false;
-    private bool _isRecordingTabletCopilotTrigger = false;
 
     // On-Duty Medic Dispatch fields
     private readonly OnDutyService _onDutyService = new();
@@ -132,8 +130,6 @@ public partial class TabletOverlayWindow : Window
         _settings.StartWithWindows = isStartup;
         TabletStartWithWindowsCheckBox.IsChecked = isStartup;
 
-        TabletCopilotEnabledCheckBox.IsChecked = _settings.CopilotEnabled;
-        UpdateTabletCopilotKeyDisplay();
 
         // Clock timer
         _clockTimer = new DispatcherTimer
@@ -149,12 +145,15 @@ public partial class TabletOverlayWindow : Window
 
         // Close on ESC and listen to size changes
         PreviewKeyDown += TabletOverlayWindow_PreviewKeyDown;
-        PreviewKeyUp += TabletOverlayWindow_PreviewKeyUp;
         SizeChanged += TabletOverlayWindow_SizeChanged;
         _isInitialized = true;
 
-        TabletVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
-        SettingsCurrentVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
+        TabletVersionText.Text = AppConstants.DisplayVersion;
+        SettingsCurrentVersionText.Text = AppConstants.DisplayVersion;
+        if (ToolsVersionText != null)
+        {
+            ToolsVersionText.Text = $"MDTab-Tools {AppConstants.DisplayVersion}";
+        }
         _ = CheckForUpdatesSilentlyAsync();
 
         _onDutyService.OnCookiesReceivedAsync = HandleSetCookiesFromApiAsync;
@@ -212,10 +211,12 @@ public partial class TabletOverlayWindow : Window
 
             var envOptions = new CoreWebView2EnvironmentOptions
             {
-                AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist"
+                AdditionalBrowserArguments = "--disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --autoplay-policy=no-user-gesture-required"
             };
             _webViewEnv ??= await CoreWebView2Environment.CreateAsync(null, userFolder, envOptions);
+            TabletWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 15, 15, 26);
             await TabletWebView.EnsureCoreWebView2Async(_webViewEnv);
+            TabletWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 15, 15, 26);
         }
         catch
         {
@@ -240,24 +241,7 @@ public partial class TabletOverlayWindow : Window
                     try {
                         Object.defineProperty(document, 'hidden', { get: () => false, configurable: true });
                         Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
-                        const origMatch = window.matchMedia;
-                        if (origMatch) {
-                            window.matchMedia = function(q) {
-                                if (typeof q === 'string' && q.includes('prefers-reduced-motion')) {
-                                    return {
-                                        matches: false,
-                                        media: q,
-                                        onchange: null,
-                                        addListener: function() {},
-                                        removeListener: function() {},
-                                        addEventListener: function() {},
-                                        removeEventListener: function() {},
-                                        dispatchEvent: function() { return false; }
-                                    };
-                                }
-                                return origMatch.call(window, q);
-                            };
-                        }
+                        window.addEventListener('visibilitychange', (e) => { e.stopImmediatePropagation(); }, true);
                     } catch(e) {}
                 ");
             }
@@ -275,6 +259,7 @@ public partial class TabletOverlayWindow : Window
             TabletWebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
             TabletWebView.CoreWebView2.SourceChanged += CoreWebView2_SourceChanged;
             TabletWebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+            TabletWebView.CoreWebView2.ProcessFailed += CoreWebView2_ProcessFailed;
             try
             {
                 TabletWebView.CoreWebView2.AddWebResourceRequestedFilter("https://md.b-zone.ro/api/*", Microsoft.Web.WebView2.Core.CoreWebView2WebResourceContext.All);
@@ -322,6 +307,22 @@ public partial class TabletOverlayWindow : Window
         {
             _ = CheckAndRefreshDutyAsync(showLoading: false);
         }
+    }
+
+    private void CoreWebView2_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+    {
+        try
+        {
+            if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited ||
+                e.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    TabletWebView?.Reload();
+                });
+            }
+        }
+        catch { }
     }
 
     private void CoreWebView2_WebResourceResponseReceived(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebResourceResponseReceivedEventArgs e)
@@ -464,8 +465,7 @@ public partial class TabletOverlayWindow : Window
             return;
         }
 
-        if (_isRecordingTabletKeybind || _isRecordingTabletStopKey || 
-            _isRecordingTabletOtKey || _isRecordingTabletCopilotKey || _isRecordingTabletCopilotTrigger)
+        if (_isRecordingTabletKeybind || _isRecordingTabletStopKey || _isRecordingTabletOtKey)
         {
             e.Handled = true;
 
@@ -540,25 +540,6 @@ public partial class TabletOverlayWindow : Window
                 _saveConfigCallback?.Invoke();
                 _refreshKeybindsCallback?.Invoke();
             }
-            else if (_isRecordingTabletCopilotKey)
-            {
-                _settings.CopilotVirtualKey = vk;
-                _isRecordingTabletCopilotKey = false;
-                TabletRecordCopilotKeyBtn.Content = "🔴 Set Key";
-                UpdateTabletCopilotKeyDisplay();
-                _saveConfigCallback?.Invoke();
-                _refreshKeybindsCallback?.Invoke();
-            }
-            else if (_isRecordingTabletCopilotTrigger)
-            {
-                _settings.CopilotTriggerVirtualKey = vk;
-                _settings.CopilotTriggerModifiers = modifiers;
-                _isRecordingTabletCopilotTrigger = false;
-                TabletRecordCopilotTriggerBtn.Content = "🔴 Set Key";
-                UpdateTabletCopilotKeyDisplay();
-                _saveConfigCallback?.Invoke();
-                _refreshKeybindsCallback?.Invoke();
-            }
 
             return;
         }
@@ -577,32 +558,6 @@ public partial class TabletOverlayWindow : Window
         {
             e.Handled = true;
             HideTablet();
-        }
-    }
-
-    private void TabletOverlayWindow_PreviewKeyUp(object sender, KeyEventArgs e)
-    {
-        if (_isRecordingTabletCopilotTrigger)
-        {
-            var key = e.Key == Key.System ? e.SystemKey : e.Key;
-            var isModifierKey = key == Key.LeftCtrl || key == Key.RightCtrl ||
-                                key == Key.LeftAlt || key == Key.RightAlt ||
-                                key == Key.LeftShift || key == Key.RightShift ||
-                                key == Key.LWin || key == Key.RWin;
-
-            if (isModifierKey)
-            {
-                // Standalone modifier key released without other keys
-                var vk = KeyInterop.VirtualKeyFromKey(key);
-                _settings.CopilotTriggerVirtualKey = vk;
-                _settings.CopilotTriggerModifiers = 0;
-
-                _isRecordingTabletCopilotTrigger = false;
-                TabletRecordCopilotTriggerBtn.Content = "🔴 Set Key";
-                UpdateTabletCopilotKeyDisplay();
-                _saveConfigCallback?.Invoke();
-                _refreshKeybindsCallback?.Invoke();
-            }
         }
     }
 
@@ -737,7 +692,14 @@ public partial class TabletOverlayWindow : Window
 
         try
         {
-            TabletWebView.Source = new Uri(url);
+            if (TabletWebView.CoreWebView2 != null)
+            {
+                TabletWebView.CoreWebView2.Navigate(url);
+            }
+            else
+            {
+                TabletWebView.Source = new Uri(url);
+            }
         }
         catch
         {
@@ -1527,38 +1489,6 @@ public partial class TabletOverlayWindow : Window
         TabletOtKeyText.Text = string.Join(" + ", parts);
     }
 
-    private void UpdateTabletCopilotKeyDisplay()
-    {
-        if (TabletCopilotKeyText != null)
-        {
-            TabletCopilotKeyText.Text = KeybindViewModel.VkToKeyName(_settings.CopilotVirtualKey);
-        }
-        
-        if (TabletCopilotTriggerText != null)
-        {
-            var triggerParts = new System.Collections.Generic.List<string>();
-            if ((_settings.CopilotTriggerModifiers & 0x0010) != 0) triggerParts.Add("RightCtrl");
-            else if ((_settings.CopilotTriggerModifiers & 0x0020) != 0) triggerParts.Add("LeftCtrl");
-            else if ((_settings.CopilotTriggerModifiers & 0x0002) != 0) triggerParts.Add("Ctrl");
-
-            if ((_settings.CopilotTriggerModifiers & 0x0040) != 0) triggerParts.Add("RightAlt");
-            else if ((_settings.CopilotTriggerModifiers & 0x0080) != 0) triggerParts.Add("LeftAlt");
-            else if ((_settings.CopilotTriggerModifiers & 0x0001) != 0) triggerParts.Add("Alt");
-
-            if ((_settings.CopilotTriggerModifiers & 0x0100) != 0) triggerParts.Add("RightShift");
-            else if ((_settings.CopilotTriggerModifiers & 0x0200) != 0) triggerParts.Add("LeftShift");
-            else if ((_settings.CopilotTriggerModifiers & 0x0004) != 0) triggerParts.Add("Shift");
-
-            string keyName = KeybindViewModel.VkToKeyName(_settings.CopilotTriggerVirtualKey);
-            if (!triggerParts.Contains(keyName))
-            {
-                triggerParts.Add(keyName);
-            }
-
-            TabletCopilotTriggerText.Text = string.Join(" + ", triggerParts);
-        }
-    }
-
     private void TabletGlobalKeybinds_Checked(object sender, RoutedEventArgs e)
     {
         if (!_isInitialized || _isLoadingSettingsUi) return;
@@ -1923,34 +1853,6 @@ public partial class TabletOverlayWindow : Window
         _saveConfigCallback?.Invoke();
     }
 
-    private void TabletCopilot_Checked(object sender, RoutedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        _settings.CopilotEnabled = true;
-        _saveConfigCallback?.Invoke();
-        _refreshKeybindsCallback?.Invoke();
-    }
-
-    private void TabletCopilot_Unchecked(object sender, RoutedEventArgs e)
-    {
-        if (!_isInitialized || _isLoadingSettingsUi) return;
-        _settings.CopilotEnabled = false;
-        _saveConfigCallback?.Invoke();
-        _refreshKeybindsCallback?.Invoke();
-    }
-
-    private void TabletRecordCopilotKeyBtn_Click(object sender, RoutedEventArgs e)
-    {
-        _isRecordingTabletCopilotKey = true;
-        TabletRecordCopilotKeyBtn.Content = "Listening...";
-    }
-
-    private void TabletRecordCopilotTriggerBtn_Click(object sender, RoutedEventArgs e)
-    {
-        _isRecordingTabletCopilotTrigger = true;
-        TabletRecordCopilotTriggerBtn.Content = "Listening...";
-    }
-
     private void TabletLockBtn_Click(object sender, RoutedEventArgs e)
     {
         LockTablet();
@@ -2118,9 +2020,16 @@ public partial class TabletOverlayWindow : Window
 
     private void BrowserMdApp_Click(object sender, RoutedEventArgs e)
     {
-        UrlTextBox.Text = "https://md.b-zone.ro";
         OpenApp(WebTabContent, true);
-        EnsureWebViewInitialized("https://md.b-zone.ro");
+        if (TabletWebView?.Source == null || !TabletWebView.Source.Host.Contains("b-zone.ro", StringComparison.OrdinalIgnoreCase))
+        {
+            UrlTextBox.Text = "https://md.b-zone.ro";
+            EnsureWebViewInitialized("https://md.b-zone.ro");
+        }
+        else
+        {
+            UrlTextBox.Text = TabletWebView.Source.ToString();
+        }
     }
 
     private void RpgPanelApp_Click(object sender, RoutedEventArgs e)
@@ -2142,6 +2051,33 @@ public partial class TabletOverlayWindow : Window
         UrlTextBox.Text = "https://gov.b-zone.ro/";
         OpenApp(WebTabContent, true);
         EnsureWebViewInitialized("https://gov.b-zone.ro/");
+    }
+
+    public void OpenWebUrl(string url)
+    {
+        UrlTextBox.Text = url;
+        OpenApp(WebTabContent, true);
+        EnsureWebViewInitialized(url);
+    }
+
+    private void DockFiseReceptieBtn_Click(object sender, RoutedEventArgs e)
+    {
+        OpenWebUrl("https://md.b-zone.ro/bisyss-interaction/fise-receptie");
+    }
+
+    private void DockFarmacieBtn_Click(object sender, RoutedEventArgs e)
+    {
+        OpenWebUrl("https://md.b-zone.ro/bisyss-interaction/farmacie");
+    }
+
+    private void DockPanelCoordonareBtn_Click(object sender, RoutedEventArgs e)
+    {
+        OpenWebUrl("https://md.b-zone.ro/panel-coordonare");
+    }
+
+    private void DockAplicatiiCertificateBtn_Click(object sender, RoutedEventArgs e)
+    {
+        OpenWebUrl("https://md.b-zone.ro/aplicatii-certificate");
     }
 
     public void OpenTools(string targetTab = "Keybinds")
@@ -2884,12 +2820,9 @@ public partial class TabletOverlayWindow : Window
             _settings.StartWithWindows = isStartup;
             TabletStartWithWindowsCheckBox.IsChecked = isStartup;
 
-            TabletCopilotEnabledCheckBox.IsChecked = _settings.CopilotEnabled;
-            UpdateTabletCopilotKeyDisplay();
-
             if (SettingsCurrentVersionText != null)
             {
-                SettingsCurrentVersionText.Text = $"v{UpdateService.GetCurrentVersion()}";
+                SettingsCurrentVersionText.Text = AppConstants.DisplayVersion;
             }
 
             LoadWallpaper();
@@ -2920,11 +2853,6 @@ public partial class TabletOverlayWindow : Window
         dest.StartWithWindows = source.StartWithWindows;
         dest.TabletWallpaperPath = source.TabletWallpaperPath;
         dest.TabletLockscreenWallpaperPath = source.TabletLockscreenWallpaperPath;
-
-        dest.CopilotEnabled = source.CopilotEnabled;
-        dest.CopilotVirtualKey = source.CopilotVirtualKey;
-        dest.CopilotTriggerVirtualKey = source.CopilotTriggerVirtualKey;
-        dest.CopilotTriggerModifiers = source.CopilotTriggerModifiers;
 
         dest.TabletEnabled = source.TabletEnabled;
         dest.TabletUrl = source.TabletUrl;

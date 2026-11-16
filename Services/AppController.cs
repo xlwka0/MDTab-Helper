@@ -23,8 +23,8 @@ public sealed class AppController : IDisposable
     private HwndSource? _hostSource;
     private KeybindOrchestrator? _keybind;
     private TabletOverlayWindow? _tabletWindow;
-    private CopilotService? _copilot;
     private TrayIconService? _trayIcon;
+    private TelemetryService? _telemetry;
     private DispatcherTimer? _saveDebounceTimer;
     private bool _disposed = false;
 
@@ -66,9 +66,8 @@ public sealed class AppController : IDisposable
             Application.Current.MainWindow = _tabletWindow;
         }
 
-        _copilot = new CopilotService();
-        ApplyCopilotSettings();
-        _copilot.Start();
+        _telemetry = new TelemetryService(_config.Keybind, SaveConfiguration);
+        _telemetry.Start();
 
         InitializeTrayIcon();
     }
@@ -126,7 +125,6 @@ public sealed class AppController : IDisposable
     private void RefreshKeybinds()
     {
         _keybind?.Apply(_config.Keybind);
-        ApplyCopilotSettings();
         SaveConfiguration();
     }
 
@@ -201,19 +199,7 @@ public sealed class AppController : IDisposable
 
     private void TabletWindow_SettingsSaved(object? sender, EventArgs e)
     {
-        ApplyCopilotSettings();
         SaveConfiguration();
-    }
-
-    private void ApplyCopilotSettings()
-    {
-        if (_copilot != null)
-        {
-            _copilot.Enabled = _config.Keybind.CopilotEnabled;
-            _copilot.CopilotKey = _config.Keybind.CopilotVirtualKey;
-            _copilot.TriggerKey = _config.Keybind.CopilotTriggerVirtualKey;
-            _copilot.TriggerModifiers = _config.Keybind.CopilotTriggerModifiers;
-        }
     }
 
     private void InitializeTrayIcon()
@@ -279,8 +265,8 @@ public sealed class AppController : IDisposable
         _keybind?.Dispose();
         _keybind = null;
 
-        _copilot?.Dispose();
-        _copilot = null;
+        _telemetry?.Dispose();
+        _telemetry = null;
 
         if (_tabletWindow != null)
         {

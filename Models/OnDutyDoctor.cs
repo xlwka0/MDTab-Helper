@@ -24,6 +24,8 @@ public class OnDutyDoctor
         if (string.IsNullOrWhiteSpace(rank)) return false;
         var lower = rank.ToLowerInvariant();
 
+        if (lower.Contains("personal")) return false;
+
         // Allow medical staff from Asistent to Director:
         // asistent -> stagiar -> rezident -> specialist -> primar -> inspector -> director
         return lower.Contains("director") ||

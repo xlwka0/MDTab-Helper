@@ -489,6 +489,11 @@ public sealed class OnDutyService
                     rankColor = rankInfo.RankColor;
                 }
 
+                if (!OnDutyDoctor.IsAllowedDutyRank(rank))
+                {
+                    continue;
+                }
+
                 if (string.IsNullOrWhiteSpace(fullName))
                 {
                     fullName = $"Medic ({cnp})";
@@ -532,6 +537,11 @@ public sealed class OnDutyService
                         rankColor = rankInfo.RankColor;
                     }
 
+                    if (!OnDutyDoctor.IsAllowedDutyRank(rank))
+                    {
+                        continue;
+                    }
+
                     if (string.IsNullOrWhiteSpace(fullName))
                     {
                         fullName = $"Medic ({cnp})";
@@ -549,8 +559,10 @@ public sealed class OnDutyService
                 }
             }
 
-            result.AllDoctors = doctors;
-            result.Groups = doctors
+            result.AllDoctors = doctors
+                .Where(d => OnDutyDoctor.IsAllowedDutyRank(d.Grad))
+                .ToList();
+            result.Groups = result.AllDoctors
                 .GroupBy(d => d.Grad)
                 .Select(g => new OnDutyGroup
                 {

@@ -85,13 +85,11 @@ public static class FeedbackService
                 string safeDesc = description.Trim();
                 if (safeDesc.Length > 4000) safeDesc = safeDesc[..3997] + "...";
 
-                string appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "2.7.4";
-
                 var fields = new List<object>
                 {
                     new { name = "Autor", value = authorName, @inline = true },
                     new { name = "Tip Raport", value = safeType, @inline = true },
-                    new { name = "Versiune App", value = $"v{appVersion}", @inline = true }
+                    new { name = "Versiune App", value = AppConstants.DisplayVersion, @inline = true }
                 };
 
                 if (attachDiagnostics)

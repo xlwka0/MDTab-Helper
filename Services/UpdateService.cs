@@ -31,19 +31,13 @@ public class UpdateService
         {
             Timeout = TimeSpan.FromSeconds(20)
         };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MDTab-Helper-Updater/2.7.4");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd($"MDTab-Helper-Updater/{AppConstants.AppVersion}");
         return client;
     }
 
     public static string GetCurrentVersion()
     {
-        var asm = Assembly.GetExecutingAssembly();
-        var ver = asm.GetName().Version;
-        if (ver != null)
-        {
-            return $"{ver.Major}.{ver.Minor}.{ver.Build}";
-        }
-        return "2.7.4";
+        return AppConstants.AppVersion;
     }
 
     public async Task<UpdateInfo> CheckForUpdatesAsync()
