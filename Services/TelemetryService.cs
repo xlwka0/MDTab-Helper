@@ -45,8 +45,8 @@ public class TelemetryService : IDisposable
     {
         if (_disposed) return;
 
-        // Initial ping after 5 seconds of launch
-        var initialTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        // Initial ping after 1 second of launch
+        var initialTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         initialTimer.Tick += (s, e) =>
         {
             initialTimer.Stop();
@@ -54,10 +54,10 @@ public class TelemetryService : IDisposable
         };
         initialTimer.Start();
 
-        // Recurring heartbeat every 3 minutes
+        // Recurring heartbeat every 60 seconds
         _heartbeatTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMinutes(3)
+            Interval = TimeSpan.FromSeconds(60)
         };
         _heartbeatTimer.Tick += (s, e) => _ = SendPingAsync(isClosing: false);
         _heartbeatTimer.Start();
